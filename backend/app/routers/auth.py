@@ -61,3 +61,68 @@ def register(
     db.commit()
     db.refresh(user)
     return user
+
+@router.put("/users", response_model=list[schemas.UserOut])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    users = db.execute(
+        select(models.User).order_by(models.User.username)
+    ).scalars().all()
+    return users
+
+@router.put("/users/{user_id}", response_model=schemas.UserOut)
+def update_user(
+    user_id: int,
+    payload: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário nao encontrado")
+    
+    data = payload.model_dump(exclude_none=True)
+
+    if "role" in data:
+        data["role"] = data["role"].upper()
+
+    for field, value in data.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/users/{user_id}/reset-password", response_model=schemas.UserOut)
+def reset_user_password(
+    user_id: int,
+    payload: schemas.PasswordReset,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/change-password")
+def change_password(
+    payload: schemas.PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Senha atual inválida")
+
+    current_user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
+
+    return {"message": "Senha alterada com sucesso"}

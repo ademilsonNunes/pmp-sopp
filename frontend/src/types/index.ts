@@ -4,7 +4,7 @@ export interface User {
   id: number
   username: string
   full_name: string
-  role: string
+  role: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active: boolean
 }
 

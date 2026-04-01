@@ -14,6 +14,7 @@ import PmpRealPage from './pages/sopp/PmpRealPage'
 import DevBonifPage from './pages/sopp/DevBonifPage'
 import EmbarquePage from './pages/sopp/EmbarquePage'
 import { useAuthStore } from './hooks/useAuth'
+import {isAdmin} from './utils/permissions'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +25,25 @@ const queryClient = new QueryClient({
   },
 })
 
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore()
   if (!token) return <Navigate to="/login" replace />
   return <>{children}</>
 }
+
+function RoleRoute({ children, allowedRoles, }: { 
+  children: React.ReactNode
+  allowedRoles: string[]
+}) {
+  const { token, user } = useAuthStore()
+
+  if (!token) return <Navigate to="/login" replace />
+  if (!user || !allowedRoles.includes(user.role)) return <Navigate to="/" replace />
+  return <>{children}</>
+  
+}
+
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore()

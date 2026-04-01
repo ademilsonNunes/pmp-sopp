@@ -6,6 +6,7 @@ interface PmpGridProps {
   loading: boolean
   mesref?: string
   total: number
+  canEdit: boolean
   onEdit?: (record: ZpmRecord) => void
 }
 
@@ -45,7 +46,7 @@ const W = { prod: 148, linha: 62 }
 const L = { prod: 0, linha: W.prod }
 const FIXED_LEFT = W.prod + W.linha  // total sticky width
 
-export default function PmpGrid({ data, loading, mesref, total, onEdit }: PmpGridProps) {
+export default function PmpGrid({ data, loading, mesref, total, canEdit, onEdit }: PmpGridProps) {
   const numDays = getDaysInMonth(mesref)
   const days    = Array.from({ length: numDays }, (_, i) => i + 1)
 
@@ -91,7 +92,9 @@ export default function PmpGrid({ data, loading, mesref, total, onEdit }: PmpGri
             <span className="text-[10px] text-gray-500">{label}</span>
           </span>
         ))}
-        <span className="text-[10px] text-gray-400 ml-2">· Clique na linha para editar</span>
+        <span className="text-[10px] text-gray-400 ml-2">
+          · {canEdit ? 'Clique na linha para editar' : 'Visualização somente leitura'}
+        </span>
       </div>
 
       <div className="overflow-x-auto">
@@ -160,8 +163,12 @@ export default function PmpGrid({ data, loading, mesref, total, onEdit }: PmpGri
               return (
                 <tr
                   key={row.id}
-                  className={`group transition-colors ${base} hover:bg-blue-50/60 cursor-pointer`}
-                  onClick={() => onEdit?.(row)}
+                  className={`group transition-colors ${base} ${
+                    canEdit ? 'hover:bg-blue-50/60 cursor-pointer' : 'cursor-default'
+                  }`}
+                  onClick={() => { if (!canEdit) return
+                    onEdit?.(row)
+                  }}
                 >
                   {/* Produto + Desc (merged) */}
                   <td

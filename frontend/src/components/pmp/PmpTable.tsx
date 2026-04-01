@@ -14,6 +14,7 @@ import type { ZpmRecord } from '../../types'
 interface PmpTableProps {
   data: ZpmRecord[]
   loading: boolean
+  canEdit: boolean
   onView: (record: ZpmRecord) => void
   onEdit: (record: ZpmRecord) => void
   onDelete: (record: ZpmRecord) => void
@@ -37,7 +38,7 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <ChevronsUpDown size={14} className="text-gray-400" />
 }
 
-export default function PmpTable({ data, loading, onView, onEdit, onDelete }: PmpTableProps) {
+export default function PmpTable({ data, loading, canEdit, onView, onEdit, onDelete }: PmpTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
 
   const columns: ColumnDef<ZpmRecord>[] = [
@@ -128,36 +129,41 @@ export default function PmpTable({ data, loading, onView, onEdit, onDelete }: Pm
         </div>
       ),
     },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); onView(row.original) }}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            title="Visualizar"
-          >
-            <Eye size={15} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(row.original) }}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-            title="Editar"
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(row.original) }}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-            title="Excluir"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      ),
-    },
-  ]
+    ...(canEdit
+      ? [    
+          {
+            id: 'actions',
+            header: '',
+            cell: ({ row }: { row: { original: ZpmRecord }}) => (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onView(row.original) }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Visualizar"
+                >
+                  <Eye size={15} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(row.original) }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                  title="Editar"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(row.original) }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Excluir"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ),
+          } as ColumnDef<ZpmRecord>,
+        ]
+      : []),
+  ]  
+
 
   const table = useReactTable({
     data,

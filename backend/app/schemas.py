@@ -38,6 +38,20 @@ class UserOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class UserUpdate(BaseModel):
+    full_name: str | None = Field(None, max_length=100)
+    role: str | None = Field(None, max_length=20)
+    is_active: bool | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=6)
+
+
+class PasswordReset(BaseModel):
+    new_password: str = Field(..., min_length=6)
+
 
 # ─── ZPM ─────────────────────────────────────────────────────────────────────
 

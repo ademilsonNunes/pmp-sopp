@@ -20,6 +20,8 @@ import {
 } from '../hooks/usePmp'
 import { formatMesRef, getCurrentMesRef, getErrorMessage, formatNumber } from '../lib/utils'
 import type { ZpmRecord, ZpmFilter, ZpmCreate, ZpmUpdate } from '../types'
+import { useAuthStore } from '../hooks/useAuth'
+import { canEditPmp } from '../utils/permissions'
 
 type ModalState =
   | { type: 'none' }
@@ -31,6 +33,8 @@ type ModalState =
   | { type: 'logs' }
 
 export default function DashboardPage() {
+  const { user } = useAuthStore()
+  const canEdit = canEditPmp(user?.role)
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const [filters, setFilters] = useState<ZpmFilter>({})
   const [search, setSearch] = useState('')
@@ -322,27 +326,35 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setModal({ type: 'logs' })}
-                className="btn-secondary flex items-center gap-2 py-2 text-sm"
-              >
-                <List size={15} />
-                <span className="hidden sm:inline">Ver Logs</span>
-              </button>
-              <button
-                onClick={() => setModal({ type: 'import' })}
-                className="btn-secondary flex items-center gap-2 py-2 text-sm"
-              >
-                <Upload size={15} />
-                <span className="hidden sm:inline">Importar CSV</span>
-              </button>
-              <button
-                onClick={() => setModal({ type: 'create' })}
-                className="btn-primary flex items-center gap-2 py-2 text-sm"
-              >
-                <Plus size={15} />
-                <span className="hidden sm:inline">Incluir</span>
-              </button>
+              {canEdit && (                
+                <button
+                  onClick={() => setModal({ type: 'logs' })}
+                  className="btn-secondary flex items-center gap-2 py-2 text-sm"
+                >
+                  <List size={15} />
+                  <span className="hidden sm:inline">Ver Logs</span>
+                </button>
+              )}
+
+              {canEdit && (
+                <button
+                  onClick={() => setModal({ type: 'import' })}
+                  className="btn-secondary flex items-center gap-2 py-2 text-sm"
+                >
+                  <Upload size={15} />
+                  <span className="hidden sm:inline">Importar CSV</span>
+                </button>
+              )}
+
+              {canEdit && (
+                <button
+                  onClick={() => setModal({ type: 'create' })}
+                  className="btn-primary flex items-center gap-2 py-2 text-sm"
+                >
+                  <Plus size={15} />
+                  <span className="hidden sm:inline">Incluir</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -354,15 +366,17 @@ export default function DashboardPage() {
                 loading={isLoading}
                 total={data?.total || 0}
                 mesref={filters.mesref || currentMesRef}
-                onEdit={(record) => setModal({ type: 'edit', record })}
+                canEdit={canEdit}
+                onEdit={(record) => { if (!canEdit) return; setModal({ type: 'edit', record }) }}
               />
             ) : (
             <PmpTable
               data={data?.items || []}
               loading={isLoading}
+              canEdit={canEdit}
               onView={(record) => setModal({ type: 'view', record })}
-              onEdit={(record) => setModal({ type: 'edit', record })}
-              onDelete={(record) => setModal({ type: 'delete', record })}
+              onEdit={(record) => { if (!canEdit) return; setModal({ type: 'edit', record })}}
+              onDelete={(record) =>  { if (!canEdit) return; setModal({ type: 'delete', record })}}
             />
             )}
 
@@ -439,7 +453,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Modals */}
-      {modal.type === 'create' && (
+      {canEdit && modal.type === 'create' && (
         <PmpForm
           mode="create"
           loading={createMutation.isPending}
@@ -459,7 +473,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {modal.type === 'edit' && (
+      {canEdit && modal.type === 'edit' && (
         <PmpForm
           mode="edit"
           record={modal.record}
@@ -469,7 +483,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {modal.type === 'delete' && (
+      {canEdit && modal.type === 'delete' && (
         <DeleteConfirm
           record={modal.record}
           loading={deleteMutation.isPending}
@@ -478,14 +492,14 @@ export default function DashboardPage() {
         />
       )}
 
-      {modal.type === 'import' && (
+      {canEdit && modal.type === 'import' && (
         <ImportModal
           defaultMesref={filters.mesref || currentMesRef}
           onClose={() => setModal({ type: 'none' })}
         />
       )}
 
-      {modal.type === 'logs' && (
+      {canEdit && modal.type === 'logs' && (
         <LogViewer onClose={() => setModal({ type: 'none' })} />
       )}
     </div>
