@@ -15,6 +15,7 @@ import DevBonifPage from './pages/sopp/DevBonifPage'
 import EmbarquePage from './pages/sopp/EmbarquePage'
 import { useAuthStore } from './hooks/useAuth'
 import {isAdmin} from './utils/permissions'
+import UsersPage from './pages/UsersPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,12 +52,22 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { token, user } = useAuthStore()
+  if (!token) return <Navigate to="/login" replace />
+  if (user?.role !== 'ADMIN') return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />          
+          <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
+          <Route path="/sopp" element={<ProtectedRoute><SoppLayout /></ProtectedRoute>}></Route>
 
           {/* PMP */}
           <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

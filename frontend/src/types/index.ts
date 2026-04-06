@@ -18,6 +18,24 @@ export interface LoginCredentials {
   password: string
 }
 
+export interface CreateUserPayload {
+  username: string
+  full_name: string
+  password: string
+  role: 'ADMIN' | 'PCP' | 'VIEWER'
+}
+
+export interface UpdateUserPayload {
+  username?: string
+  full_name?: string
+  role?: 'ADMIN' | 'PCP' | 'VIEWER'
+  is_active?: boolean
+}
+
+export interface ChangePasswordRequest {
+  password: string
+}
+
 // ─── ZPM ─────────────────────────────────────────────────────────────────────
 
 export interface ZpmRecord {

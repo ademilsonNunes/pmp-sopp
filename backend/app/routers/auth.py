@@ -62,15 +62,6 @@ def register(
     db.refresh(user)
     return user
 
-@router.put("/users", response_model=list[schemas.UserOut])
-def list_users(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_roles("ADMIN")),
-):
-    users = db.execute(
-        select(models.User).order_by(models.User.username)
-    ).scalars().all()
-    return users
 
 @router.put("/users/{user_id}", response_model=schemas.UserOut)
 def update_user(
@@ -96,22 +87,6 @@ def update_user(
     return user
 
 
-@router.post("/users/{user_id}/reset-password", response_model=schemas.UserOut)
-def reset_user_password(
-    user_id: int,
-    payload: schemas.PasswordReset,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_roles("ADMIN")),
-):
-    user = db.get(models.User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-    user.hashed_password = get_password_hash(payload.new_password)
-    db.commit()
-    db.refresh(user)
-    return user
-
 
 @router.post("/change-password")
 def change_password(
@@ -126,3 +101,61 @@ def change_password(
     db.commit()
 
     return {"message": "Senha alterada com sucesso"}
+
+
+
+@router.get("/users", response_model=list[schemas.UserOut])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    users = db.execute(
+        select(models.User).order_by(models.User.username)
+    ).scalars().all()
+    return users
+
+
+@router.patch("/users/{user_id}/inactive", response_model=schemas.UserOut)
+def deactivate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.is_active = False
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.patch("/users/{user_id}/active", response_model=schemas.UserOut)
+def activate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.is_active = True
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.patch("/users/{user_id}/password")
+def reset_user_password(
+    user_id: int,
+    payload: schemas.ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    user.hashed_password = get_password_hash(payload.password)
+    db.commit()
+    return {"message": "Senha redefinida com sucesso"}

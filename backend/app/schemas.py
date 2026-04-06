@@ -12,7 +12,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     full_name: str = Field("", max_length=100)
     password: str = Field(..., min_length=6)
-    role: str = Field("VIEWER", max_length=20)
+    role: Literal["ADMIN", "PCP", "VIEWER"] = "VIEWER"
 
 
 class UserLogin(BaseModel):
@@ -51,6 +51,10 @@ class PasswordChange(BaseModel):
 
 class PasswordReset(BaseModel):
     new_password: str = Field(..., min_length=6)
+
+
+class ChangePasswordRequest(BaseModel):
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 # ─── ZPM ─────────────────────────────────────────────────────────────────────
