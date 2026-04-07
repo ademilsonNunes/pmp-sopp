@@ -10,6 +10,7 @@ import {
   useCreateUser,
   useDeactivateUser,
   useActivateUser,
+  useUnlockUser,
   useResetUserPassword,
 } from '../hooks/useUsers'
 import { getErrorMessage } from '../lib/utils'
@@ -31,6 +32,7 @@ export default function UsersPage() {
   const createUser = useCreateUser()
   const deactivateUser = useDeactivateUser()
   const activateUser = useActivateUser()
+  const unlockUser = useUnlockUser()
   const resetPassword = useResetUserPassword()
 
   const [search, setSearch] = useState('')
@@ -93,6 +95,16 @@ export default function UsersPage() {
     }
   }
 
+  const handleUnlock = async (u: User) => {
+    try {
+      await unlockUser.mutateAsync(u.id)
+      toast.success('Usuário desbloqueado com sucesso!')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
+  }
+
+
   const handleResetPassword = async (u: User) => {
     const newPassword = window.prompt(`Nova senha para ${u.username}:`)
     if (!newPassword) return
@@ -111,6 +123,18 @@ export default function UsersPage() {
       toast.error(getErrorMessage(err))
     }
   }
+
+  const isUserBlocked = (u: User) => {
+    if (!u.blocked_until) return false
+    return new Date(u.blocked_until).getTime() > Date.now()
+  }
+
+  const formatBlockedUntil = (value?: string | null) => {
+    if (!value) return ''
+    return new Date(value).toLocaleString('pt-BR')
+  }
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -304,15 +328,23 @@ export default function UsersPage() {
                             </span>
                           </td>
                           <td className="py-3 pr-3">
-                            <span
-                              className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
-                                u.is_active
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {u.is_active ? 'Ativo' : 'Inativo'}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span
+                                className={`inline-flex w-fit px-2 py-1 rounded-full text-xs font-semibold ${
+                                  u.is_active
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-red-100 text-red-700'
+                                }`}
+                              >
+                                {u.is_active ? 'Ativo' : 'Inativo'}
+                              </span>
+                              
+                              {isUserBlocked(u) && (
+                                <span className="inline-flex w-fit px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                                  Bloqueado até {formatBlockedUntil(u.blocked_until)}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3">
                             <div className="flex flex-wrap gap-2">
@@ -325,6 +357,16 @@ export default function UsersPage() {
                                   Senha
                                 </span>
                               </button>
+
+                              {isUserBlocked(u) && (
+                                <button
+                                  onClick={() => handleUnlock(u)}
+                                  disabled={unlockUser.isPending}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                >
+                                  Desbloquear
+                                </button>
+                              )}
 
                               {u.is_active ? (
                                 <button

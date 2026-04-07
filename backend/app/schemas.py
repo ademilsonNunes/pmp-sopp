@@ -35,6 +35,9 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    failed_login_attempts: int
+    blocked_until: datetime | None = None
+    last_failed_login_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

@@ -68,6 +68,7 @@ def create_tables():
         ],
     )
     _ensure_user_role_column()
+    _ensure_user_security_columns()
 
 
 def _ensure_user_role_column() -> None:
@@ -125,3 +126,37 @@ def _ensure_user_role_column() -> None:
                 "admin_role": settings.DEFAULT_ADMIN_ROLE,
             },
         )
+
+def _ensure_user_security_columns() -> None:
+    with engine.begin() as conn:
+        checks = {
+            "failed_login_attempts": """
+                ALTER TABLE ZPMP_USERS
+                ADD failed_login_attempts INT NOT NULL
+                CONSTRAINT DF_ZPMP_USERS_FAILED_LOGIN_ATTEMPTS DEFAULT 0
+            """,
+            "blocked_until": """
+                ALTER TABLE ZPMP_USERS
+                ADD blocked_until DATETIME NULL
+            """,
+            "last_failed_login_at": """
+                ALTER TABLE ZPMP_USERS
+                ADD last_failed_login_at DATETIME NULL
+            """,
+        }
+
+        for column_name, ddl in checks.items():
+            exists = conn.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'ZPMP_USERS'
+                      AND COLUMN_NAME = :column_name
+                    """
+                ),
+                {"column_name": column_name},
+            ).scalar()
+
+            if not exists:
+                conn.execute(text(ddl))

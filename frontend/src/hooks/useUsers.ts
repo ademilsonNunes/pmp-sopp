@@ -73,6 +73,21 @@ export function useActivateUser() {
   })
 }
 
+export function useUnlockUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (userId: number) => {
+      const { data } = await api.patch<User>(`/auth/users/${userId}/unlock`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+
 export function useResetUserPassword() {
   return useMutation({
     mutationFn: async ({

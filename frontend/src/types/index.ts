@@ -6,6 +6,9 @@ export interface User {
   full_name: string
   role: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active: boolean
+  failed_login_attempts: number
+  blocked_until?: string | null
+  last_failed_login_at?: string | null
 }
 
 export interface Token {
