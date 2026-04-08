@@ -1,10 +1,17 @@
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.database import get_db
-from app.auth import verify_password, get_password_hash, create_access_token
+from app.auth import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_token_hash,
+)
 from app.deps import get_current_user, require_roles
 from app import models, schemas
 from app.config import settings
@@ -19,57 +26,137 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    username = form_data.username.strip()
-
     user = db.execute(
-        select(models.User).where(models.User.username == username)
+        select(models.User).where(models.User.username == form_data.username)
     ).scalar_one_or_none()
 
-    now = datetime.now()
-
-    
-    if user and user.blocked_until and user.blocked_until > now:
-        raise HTTPException(
-            status_code=status.HTTP_423_LOCKED,
-            detail=f"Usuário bloqueado até {user.blocked_until.strftime('%d/%m/%Y %H:%M:%S')}. Procure um ADMIN ou aguarde 10 minutos.",
-        )
-
-    
     if not user or not verify_password(form_data.password, user.hashed_password):
-        if user:
-            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
-            user.last_failed_login_at = now
-
-            if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
-                user.blocked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
-
-            db.commit()
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha inválidos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo"
+            detail="Usuário inativo",
         )
 
-    
-    user.failed_login_attempts = 0
-    user.blocked_until = None
-    user.last_failed_login_at = None
+    access_token = create_access_token({
+        "sub": user.username,
+        "role": user.role,
+    })
+
+    refresh_token = create_refresh_token({
+        "sub": user.username,
+    })
+
+    db_refresh = models.RefreshToken(
+        user_id=user.id,
+        token_hash=get_token_hash(refresh_token),
+        expires_at=datetime.now(timezone.utc).replace(tzinfo=None)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+    )
+    db.add(db_refresh)
     db.commit()
 
-    access_token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    return schemas.Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
     )
-    return schemas.Token(access_token=access_token)
 
+
+@router.post("/refresh", response_model=schemas.Token)
+def refresh_token(
+    payload: schemas.RefreshRequest,
+    db: Session = Depends(get_db),
+):
+    decoded = decode_token(payload.refresh_token)
+
+    if not decoded or decoded.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido",
+        )
+
+    username = decoded.get("sub")
+    token_hash = get_token_hash(payload.refresh_token)
+
+    stored = db.execute(
+        select(models.RefreshToken).where(models.RefreshToken.token_hash == token_hash)
+    ).scalar_one_or_none()
+
+    if not stored:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token não encontrado",
+        )
+
+    if stored.revoked_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token revogado",
+        )
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if stored.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expirado",
+        )
+
+    user = db.execute(
+        select(models.User).where(models.User.username == username)
+    ).scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário inválido",
+        )
+
+    stored.revoked_at = now
+
+    new_access_token = create_access_token({
+        "sub": user.username,
+        "role": user.role,
+    })
+
+    new_refresh_token = create_refresh_token({
+        "sub": user.username,
+    })
+
+    db.add(
+        models.RefreshToken(
+            user_id=user.id,
+            token_hash=get_token_hash(new_refresh_token),
+            expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+        )
+    )
+    db.commit()
+
+    return schemas.Token(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+    )
+
+@router.post("/logout")
+def logout(
+    payload: schemas.LogoutRequest,
+    db: Session = Depends(get_db),
+):
+    token_hash = get_token_hash(payload.refresh_token)
+
+    stored = db.execute(
+        select(models.RefreshToken).where(models.RefreshToken.token_hash == token_hash)
+    ).scalar_one_or_none()
+
+    if stored and stored.revoked_at is None:
+        stored.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.commit()
+
+    return {"message": "Logout realizado com sucesso"}
 
 
 @router.get("/me", response_model=schemas.UserOut)

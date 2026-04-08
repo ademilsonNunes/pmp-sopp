@@ -65,10 +65,12 @@ def create_tables():
         tables=[
             models.User.__table__,
             models.ImportLog.__table__,
+            models.RefreshToken.__table__,
         ],
     )
     _ensure_user_role_column()
     _ensure_user_security_columns()
+    _ensure_user_role_column()
 
 
 def _ensure_user_role_column() -> None:

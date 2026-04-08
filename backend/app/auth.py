@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import uuid4
+import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.config import settings
@@ -15,21 +17,51 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
+def create_token(
+    data: dict[str, Any],
+    expires_delta: timedelta,
+    token_type: str,
+) -> str:
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode.update({
+        "exp": expire,
+        "type": token_type,
+        "jti": str(uuid4()),
+    })
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_access_token(data: dict[str, Any]) -> str:
+    return create_token(
+        data=data,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        token_type="access",
+    )
+
+
+def create_refresh_token(data: dict[str, Any]) -> str:
+    return create_token(
+        data=data,
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+        token_type="refresh",
+    )
+
+
+def decode_token(token: str) -> dict[str, Any] | None:
+    try:
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return None
 
 
 def verify_token(token: str) -> str | None:
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str | None = payload.get("sub")
-        return username
-    except JWTError:
+    payload = decode_token(token)
+    if not payload:
         return None
+    if payload.get("type") != "access":
+        return None
+    return payload.get("sub")
+
+def get_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

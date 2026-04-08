@@ -44,7 +44,9 @@ export function useAuthStore() {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
 
+
     localStorage.setItem('pmp_token', tokenData.access_token)
+    localStorage.setItem('pmp_refresh_token', tokenData.refresh_token)
     _token = tokenData.access_token
 
     const { data: userData } = await api.get<User>('/auth/me')
@@ -55,14 +57,27 @@ export function useAuthStore() {
     return userData
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('pmp_token')
-    localStorage.removeItem('pmp_user')
-    _token = null
-    _user = null
-    notifyListeners()
-    window.location.href = '/login'
-  }, [])
+const logout = useCallback(async () => {
+  const refreshToken = localStorage.getItem('pmp_refresh_token')
+
+  try {
+    if (refreshToken) {
+      await api.post('/auth/logout', {
+        refresh_token: refreshToken,
+      })
+    }
+  } catch {
+    // ignora erro de logout remoto
+  }
+
+  localStorage.removeItem('pmp_token')
+  localStorage.removeItem('pmp_refresh_token')
+  localStorage.removeItem('pmp_user')
+  _token = null
+  _user = null
+  notifyListeners()
+  window.location.href = '/login'
+}, [])
 
   return {
     token: _token,

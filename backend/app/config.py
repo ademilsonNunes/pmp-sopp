@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "change-me-in-.env-with-a-random-secret-key"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 7
 
     # App runtime
     BACKEND_CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"

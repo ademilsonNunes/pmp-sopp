@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    BigInteger, Integer, String, Float, Boolean, DateTime,
+    BigInteger, Integer, String, Float, Boolean, DateTime, ForeignKey,
     Text, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -128,3 +128,14 @@ class ImportLog(Base):
     username: Mapped[str]      = mapped_column(String(50),  nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime,  server_default=func.now())
     details:  Mapped[str | None] = mapped_column(Text,      nullable=True)
+
+
+class RefreshToken(Base):
+    __tablename__ = "ZPMP_REFRESH_TOKENS"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
