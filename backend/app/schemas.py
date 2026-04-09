@@ -12,7 +12,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     full_name: str = Field("", max_length=100)
     password: str = Field(..., min_length=6)
-    role: str = Field("VIEWER", max_length=20)
+    role: Literal["ADMIN", "PCP", "VIEWER"] = "VIEWER"
 
 
 class UserLogin(BaseModel):
@@ -22,6 +22,7 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
 
@@ -35,6 +36,44 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    failed_login_attempts: int
+    blocked_until: datetime | None = None
+    last_failed_login_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class UserUpdate(BaseModel):
+    full_name: str | None = Field(None, max_length=100)
+    role: str | None = Field(None, max_length=20)
+    is_active: bool | None = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=6)
+
+
+class PasswordReset(BaseModel):
+    new_password: str = Field(..., min_length=6)
+
+
+class ChangePasswordRequest(BaseModel):
+    password: str = Field(..., min_length=6, max_length=100)
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
+class LoginAuditOut(BaseModel):
+    id: int
+    user_id: int | None
+    ip: str
+    user_agent: str
+    timestamp: datetime
+    sucesso: bool
+    motivo_falha: str | None = None
 
     model_config = {"from_attributes": True}
 

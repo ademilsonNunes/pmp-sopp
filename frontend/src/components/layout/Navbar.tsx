@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LogOut, ChevronDown, Factory, BarChart2 } from 'lucide-react'
+import { LogOut, ChevronDown, Factory, BarChart2, Users } from 'lucide-react'
 import { useAuthStore } from '../../hooks/useAuth'
+
 
 export default function Navbar() {
   const { user, logout } = useAuthStore()
@@ -47,6 +48,18 @@ export default function Navbar() {
               }>
               <Factory size={14} /> PMP
             </NavLink>
+            {user?.role === 'ADMIN' && (
+              <NavLink
+                to="/users"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`
+                }
+              >
+                <Users size={14} /> Usuários
+              </NavLink>
+            )}
             <NavLink to="/sopp"
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${

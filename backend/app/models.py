@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    BigInteger, Integer, String, Float, Boolean, DateTime,
+    BigInteger, Integer, String, Float, Boolean, DateTime, ForeignKey,
     Text, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,6 +19,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="VIEWER")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    blocked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_failed_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -125,3 +128,28 @@ class ImportLog(Base):
     username: Mapped[str]      = mapped_column(String(50),  nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime,  server_default=func.now())
     details:  Mapped[str | None] = mapped_column(Text,      nullable=True)
+
+
+class RefreshToken(Base):
+    __tablename__ = "ZPMP_REFRESH_TOKENS"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class LoginAudit(Base):
+    __tablename__ = "ZPMP_LOGIN_AUDIT"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ip: Mapped[str] = mapped_column(String(45), nullable=False, default="")
+    user_agent: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    sucesso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    motivo_falha: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+

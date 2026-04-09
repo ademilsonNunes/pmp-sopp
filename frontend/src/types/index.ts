@@ -4,17 +4,39 @@ export interface User {
   id: number
   username: string
   full_name: string
-  role: string
+  role: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active: boolean
+  failed_login_attempts: number
+  blocked_until?: string | null
+  last_failed_login_at?: string | null
 }
 
 export interface Token {
   access_token: string
+  refresh_token: string
   token_type: string
 }
 
 export interface LoginCredentials {
   username: string
+  password: string
+}
+
+export interface CreateUserPayload {
+  username: string
+  full_name: string
+  password: string
+  role: 'ADMIN' | 'PCP' | 'VIEWER'
+}
+
+export interface UpdateUserPayload {
+  username?: string
+  full_name?: string
+  role?: 'ADMIN' | 'PCP' | 'VIEWER'
+  is_active?: boolean
+}
+
+export interface ChangePasswordRequest {
   password: string
 }
 
