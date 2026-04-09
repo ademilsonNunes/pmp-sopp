@@ -66,6 +66,17 @@ class RefreshRequest(BaseModel):
 class LogoutRequest(BaseModel):
     refresh_token: str
 
+class LoginAuditOut(BaseModel):
+    id: int
+    user_id: int | None
+    ip: str
+    user_agent: str
+    timestamp: datetime
+    sucesso: bool
+    motivo_falha: str | None = None
+
+    model_config = {"from_attributes": True}
+
 
 # ─── ZPM ─────────────────────────────────────────────────────────────────────
 

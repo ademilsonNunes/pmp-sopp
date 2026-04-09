@@ -66,11 +66,12 @@ def create_tables():
             models.User.__table__,
             models.ImportLog.__table__,
             models.RefreshToken.__table__,
+            models.LoginAudit.__table__,
         ],
     )
     _ensure_user_role_column()
     _ensure_user_security_columns()
-    _ensure_user_role_column()
+    _ensure_login_audit_columns()
 
 
 def _ensure_user_role_column() -> None:
@@ -162,3 +163,33 @@ def _ensure_user_security_columns() -> None:
 
             if not exists:
                 conn.execute(text(ddl))
+
+
+def _ensure_login_audit_columns() -> None:
+    with engine.begin() as conn:
+        table_exists = conn.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_NAME = 'ZPMP_LOGIN_AUDIT'
+                """
+            )
+        ).scalar()
+
+        if not table_exists:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE ZPMP_LOGIN_AUDIT (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        user_id INT NULL,
+                        ip VARCHAR(45) NOT NULL CONSTRAINT DF_ZPMP_LOGIN_AUDIT_IP DEFAULT '',
+                        user_agent VARCHAR(500) NOT NULL CONSTRAINT DF_ZPMP_LOGIN_AUDIT_USER_AGENT DEFAULT '',
+                        timestamp DATETIME NOT NULL CONSTRAINT DF_ZPMP_LOGIN_AUDIT_TIMESTAMP DEFAULT GETDATE(),
+                        sucesso BIT NOT NULL,
+                        motivo_falha VARCHAR(255) NULL
+                    )
+                    """
+                )
+            )

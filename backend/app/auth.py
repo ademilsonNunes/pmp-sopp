@@ -32,18 +32,18 @@ def create_token(
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_access_token(data: dict[str, Any]) -> str:
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     return create_token(
         data=data,
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        expires_delta=expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         token_type="access",
     )
 
 
-def create_refresh_token(data: dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     return create_token(
         data=data,
-        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+        expires_delta=expires_delta or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
         token_type="refresh",
     )
 
@@ -60,6 +60,14 @@ def verify_token(token: str) -> str | None:
     if not payload:
         return None
     if payload.get("type") != "access":
+        return None
+    return payload.get("sub")
+
+def verify_refresh_token(token: str) -> str | None:
+    payload = decode_token(token)
+    if not payload:
+        return None
+    if payload.get("type") != "refresh":
         return None
     return payload.get("sub")
 

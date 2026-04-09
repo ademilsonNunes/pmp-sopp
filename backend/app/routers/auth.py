@@ -1,15 +1,16 @@
-from datetime import datetime,timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+
 from app.database import get_db
 from app.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
     create_refresh_token,
-    decode_token,
+    verify_refresh_token,
     get_token_hash,
 )
 from app.deps import get_current_user, require_roles
@@ -17,20 +18,105 @@ from app import models, schemas
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 10
 
 
+def _get_client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    if request.client:
+        return request.client.host or ""
+
+    return ""
+
+
+def _register_login_audit(
+    db: Session,
+    request: Request,
+    user: models.User | None,
+    sucesso: bool,
+    motivo_falha: str | None = None,
+) -> None:
+    audit = models.LoginAudit(
+        user_id=user.id if user else None,
+        ip=_get_client_ip(request),
+        user_agent=request.headers.get("user-agent", ""),
+        sucesso=sucesso,
+        motivo_falha=motivo_falha,
+    )
+    db.add(audit)
+    db.commit()
+
+
 @router.post("/login", response_model=schemas.Token)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    username = form_data.username.strip()
+
     user = db.execute(
-        select(models.User).where(models.User.username == form_data.username)
+        select(models.User).where(models.User.username == username)
     ).scalar_one_or_none()
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    now = datetime.now()
+
+    if user and user.blocked_until and user.blocked_until > now:
+        _register_login_audit(
+            db=db,
+            request=request,
+            user=user,
+            sucesso=False,
+            motivo_falha="USUARIO_BLOQUEADO",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"Usuário bloqueado até {user.blocked_until.strftime('%d/%m/%Y %H:%M:%S')}. Procure um ADMIN ou aguarde 10 minutos.",
+        )
+
+    if not user:
+        _register_login_audit(
+            db=db,
+            request=request,
+            user=None,
+            sucesso=False,
+            motivo_falha="USUARIO_NAO_ENCONTRADO",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário ou senha inválidos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not verify_password(form_data.password, user.hashed_password):
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        user.last_failed_login_at = now
+
+        motivo = "SENHA_INVALIDA"
+
+        if user.failed_login_attempts >= MAX_LOGIN_ATTEMPTS:
+            user.blocked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+            motivo = "USUARIO_BLOQUEADO_POR_EXCESSO_DE_TENTATIVAS"
+
+        db.commit()
+
+        _register_login_audit(
+            db=db,
+            request=request,
+            user=user,
+            sucesso=False,
+            motivo_falha=motivo,
+        )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário ou senha inválidos",
@@ -38,32 +124,58 @@ def login(
         )
 
     if not user.is_active:
+        _register_login_audit(
+            db=db,
+            request=request,
+            user=user,
+            sucesso=False,
+            motivo_falha="USUARIO_INATIVO",
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo",
         )
 
-    access_token = create_access_token({
-        "sub": user.username,
-        "role": user.role,
-    })
+    user.failed_login_attempts = 0
+    user.blocked_until = None
+    user.last_failed_login_at = None
+    db.commit()
 
-    refresh_token = create_refresh_token({
-        "sub": user.username,
-    })
-
-    db_refresh = models.RefreshToken(
-        user_id=user.id,
-        token_hash=get_token_hash(refresh_token),
-        expires_at=datetime.now(timezone.utc).replace(tzinfo=None)
-        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+    _register_login_audit(
+        db=db,
+        request=request,
+        user=user,
+        sucesso=True,
+        motivo_falha=None,
     )
-    db.add(db_refresh)
+
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    refresh_token = create_refresh_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+    )
+
+    refresh_expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+        minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
+    )
+
+    db.add(
+        models.RefreshToken(
+            user_id=user.id,
+            token_hash=get_token_hash(refresh_token),
+            expires_at=refresh_expires_at,
+        )
+    )
     db.commit()
 
     return schemas.Token(
         access_token=access_token,
         refresh_token=refresh_token,
+        token_type="bearer",
     )
 
 
@@ -72,15 +184,14 @@ def refresh_token(
     payload: schemas.RefreshRequest,
     db: Session = Depends(get_db),
 ):
-    decoded = decode_token(payload.refresh_token)
+    username = verify_refresh_token(payload.refresh_token)
 
-    if not decoded or decoded.get("type") != "refresh":
+    if not username:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido",
         )
 
-    username = decoded.get("sub")
     token_hash = get_token_hash(payload.refresh_token)
 
     stored = db.execute(
@@ -118,20 +229,24 @@ def refresh_token(
 
     stored.revoked_at = now
 
-    new_access_token = create_access_token({
-        "sub": user.username,
-        "role": user.role,
-    })
+    new_access_token = create_access_token(
+        {
+            "sub": user.username,
+            "role": user.role,
+        }
+    )
 
-    new_refresh_token = create_refresh_token({
-        "sub": user.username,
-    })
+    new_refresh_token = create_refresh_token(
+        {
+            "sub": user.username,
+        }
+    )
 
     db.add(
         models.RefreshToken(
             user_id=user.id,
             token_hash=get_token_hash(new_refresh_token),
-            expires_at=now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
+            expires_at=now + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
         )
     )
     db.commit()
@@ -139,7 +254,20 @@ def refresh_token(
     return schemas.Token(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
+        token_type="bearer",
     )
+
+
+@router.get("/admin/audit", response_model=list[schemas.LoginAuditOut])
+def get_login_audit(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("ADMIN")),
+):
+    audits = db.execute(
+        select(models.LoginAudit).order_by(models.LoginAudit.timestamp.desc())
+    ).scalars().all()
+    return audits
+
 
 @router.post("/logout")
 def logout(
@@ -175,6 +303,7 @@ def register(
     ).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Nome de usuário já está em uso")
+
     user = models.User(
         username=user_data.username,
         full_name=user_data.full_name,
@@ -185,6 +314,7 @@ def register(
     db.commit()
     db.refresh(user)
     return user
+
 
 @router.patch("/users/{user_id}/unlock", response_model=schemas.UserOut)
 def unlock_user(
@@ -215,7 +345,7 @@ def update_user(
     user = db.get(models.User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário nao encontrado")
-    
+
     data = payload.model_dump(exclude_none=True)
 
     if "role" in data:
@@ -227,7 +357,6 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
-
 
 
 @router.post("/change-password")
@@ -243,7 +372,6 @@ def change_password(
     db.commit()
 
     return {"message": "Senha alterada com sucesso"}
-
 
 
 @router.get("/users", response_model=list[schemas.UserOut])
@@ -272,6 +400,7 @@ def deactivate_user(
     db.refresh(user)
     return user
 
+
 @router.patch("/users/{user_id}/active", response_model=schemas.UserOut)
 def activate_user(
     user_id: int,
@@ -286,6 +415,7 @@ def activate_user(
     db.commit()
     db.refresh(user)
     return user
+
 
 @router.patch("/users/{user_id}/password")
 def reset_user_password(

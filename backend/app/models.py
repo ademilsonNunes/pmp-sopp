@@ -139,3 +139,17 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class LoginAudit(Base):
+    __tablename__ = "ZPMP_LOGIN_AUDIT"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ip: Mapped[str] = mapped_column(String(45), nullable=False, default="")
+    user_agent: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    sucesso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    motivo_falha: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
