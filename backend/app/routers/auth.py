@@ -3,19 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-
-from app.database import get_db
+from app import models, schemas
 from app.auth import (
     verify_password,
     get_password_hash,
     create_access_token,
     create_refresh_token,
     verify_refresh_token,
+    decode_token,
     get_token_hash,
+    generate_password_reset_token,
+    get_password_reset_token_hash,
 )
-from app.deps import get_current_user, require_roles
-from app import models, schemas
 from app.config import settings
+from app.database import get_db
+from app.deps import (
+     get_current_user,
+     get_current_user_allow_password_change,
+     require_roles,
+)
+from app.email_service import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -167,7 +174,8 @@ def login(
         models.RefreshToken(
             user_id=user.id,
             token_hash=get_token_hash(refresh_token),
-            expires_at=refresh_expires_at,
+            expires_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES),
         )
     )
     db.commit()
@@ -175,6 +183,7 @@ def login(
     return schemas.Token(
         access_token=access_token,
         refresh_token=refresh_token,
+        force_password_change=user.force_password_change,
         token_type="bearer",
     )
 
@@ -184,14 +193,15 @@ def refresh_token(
     payload: schemas.RefreshRequest,
     db: Session = Depends(get_db),
 ):
-    username = verify_refresh_token(payload.refresh_token)
+    decoded = decode_token(payload.refresh_token)
 
-    if not username:
+    if not decoded or decoded.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido",
         )
 
+    username = decoded.get("sub")
     token_hash = get_token_hash(payload.refresh_token)
 
     stored = db.execute(
@@ -227,20 +237,22 @@ def refresh_token(
             detail="Usuário inválido",
         )
 
+    if user.force_password_change:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Troca de senha obrigatória. Altere a senha em /auth/change-password para continuar.",
+        )
+
     stored.revoked_at = now
 
-    new_access_token = create_access_token(
-        {
+    new_access_token = create_access_token({
             "sub": user.username,
             "role": user.role,
-        }
-    )
+    })
 
-    new_refresh_token = create_refresh_token(
-        {
+    new_refresh_token = create_refresh_token({
             "sub": user.username,
-        }
-    )
+    })
 
     db.add(
         models.RefreshToken(
@@ -254,6 +266,7 @@ def refresh_token(
     return schemas.Token(
         access_token=new_access_token,
         refresh_token=new_refresh_token,
+        force_password_change=False,
         token_type="bearer",
     )
 
@@ -301,6 +314,7 @@ def register(
     existing = db.execute(
         select(models.User).where(models.User.username == user_data.username)
     ).scalar_one_or_none()
+
     if existing:
         raise HTTPException(status_code=400, detail="Nome de usuário já está em uso")
 
@@ -309,6 +323,7 @@ def register(
         full_name=user_data.full_name,
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role.upper(),
+        force_password_change=True,
     )
     db.add(user)
     db.commit()
@@ -363,12 +378,17 @@ def update_user(
 def change_password(
     payload: schemas.PasswordChange,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user_allow_password_change),
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Senha atual inválida")
 
+    if payload.current_password == payload.new_password:
+        raise HTTPException(status_code=400, detail="A nova senha deve ser diferente da senha atual")
+
     current_user.hashed_password = get_password_hash(payload.new_password)
+    current_user.force_password_change = False
+
     db.commit()
 
     return {"message": "Senha alterada com sucesso"}
@@ -429,5 +449,116 @@ def reset_user_password(
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
     user.hashed_password = get_password_hash(payload.password)
+    user.force_password_change = True
+
     db.commit()
+    return {"message": "Senha redefinida com sucesso"}
+
+
+@router.post("/forgot-password", response_model=schemas.MessageResponse)
+def forgot_password(
+    payload: schemas.ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    email = payload.email.strip().lower()
+
+    user = db.execute(
+        select(models.User).where(models.User.email == email)
+    ).scalar_one_or_none()
+
+    # resposta genérica para não revelar existência do usuário
+    generic_response = {
+        "message": "Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha."
+    }
+
+    if not user or not user.is_active:
+        return generic_response
+
+    # invalida tokens anteriores ainda abertos desse usuário
+    active_tokens = db.execute(
+        select(models.PasswordResetToken).where(
+            models.PasswordResetToken.user_id == user.id,
+            models.PasswordResetToken.used_at.is_(None),
+        )
+    ).scalars().all()
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    for item in active_tokens:
+        item.used_at = now
+
+    raw_token = generate_password_reset_token()
+    token_hash = get_password_reset_token_hash(raw_token)
+
+    reset_token = models.PasswordResetToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=now + timedelta(minutes=15),
+    )
+    db.add(reset_token)
+    db.commit()
+
+    reset_link = f"{settings.FRONTEND_URL}/reset-password/{raw_token}"
+
+    try:
+        send_password_reset_email(
+            to_email=user.email,
+            reset_link=reset_link,
+            full_name=user.full_name,
+        )
+    except Exception:
+        # opcional: logar o erro
+        pass
+
+    return generic_response
+
+
+@router.post("/reset-password/{token}", response_model=schemas.MessageResponse)
+def reset_password(
+    token: str,
+    payload: schemas.ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    token_hash = get_password_reset_token_hash(token)
+
+    reset_entry = db.execute(
+        select(models.PasswordResetToken).where(
+            models.PasswordResetToken.token_hash == token_hash
+        )
+    ).scalar_one_or_none()
+
+    if not reset_entry:
+        raise HTTPException(status_code=400, detail="Token inválido ou expirado")
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    if reset_entry.used_at is not None:
+        raise HTTPException(status_code=400, detail="Token inválido ou já utilizado")
+
+    if reset_entry.expires_at <= now:
+        raise HTTPException(status_code=400, detail="Token expirado")
+
+    user = db.get(models.User, reset_entry.user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="Usuário inválido")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    user.failed_login_attempts = 0
+    user.blocked_until = None
+    user.last_failed_login_at = None
+
+    reset_entry.used_at = now
+
+    # opcional e recomendado: revogar refresh tokens do usuário
+    refresh_tokens = db.execute(
+        select(models.RefreshToken).where(
+            models.RefreshToken.user_id == user.id,
+            models.RefreshToken.revoked_at.is_(None),
+        )
+    ).scalars().all()
+
+    for item in refresh_tokens:
+        item.revoked_at = now
+
+    db.commit()
+
     return {"message": "Senha redefinida com sucesso"}

@@ -15,10 +15,12 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     hashed_password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="VIEWER")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    force_password_change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     blocked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_failed_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -151,5 +153,16 @@ class LoginAudit(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
     sucesso: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     motivo_falha: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "ZPMP_PASSWORD_RESET_TOKENS"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

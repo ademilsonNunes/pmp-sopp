@@ -28,6 +28,7 @@ def _create_default_admin():
                 hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                 role=settings.DEFAULT_ADMIN_ROLE,
                 is_active=True,
+                force_password_change=False,
             )
             db.add(admin)
             db.commit()

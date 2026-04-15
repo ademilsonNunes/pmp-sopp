@@ -67,11 +67,14 @@ def create_tables():
             models.ImportLog.__table__,
             models.RefreshToken.__table__,
             models.LoginAudit.__table__,
+            models.PasswordResetToken.__table__,
         ],
     )
     _ensure_user_role_column()
     _ensure_user_security_columns()
     _ensure_login_audit_columns()
+    _ensure_user_email_column()
+    _ensure_user_force_password_change_column()
 
 
 def _ensure_user_role_column() -> None:
@@ -193,3 +196,44 @@ def _ensure_login_audit_columns() -> None:
                     """
                 )
             )
+
+
+def _ensure_user_email_column() -> None:
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'ZPMP_USERS'
+                  AND COLUMN_NAME = 'email'
+            """)
+        ).scalar()
+
+        if not exists:
+            conn.execute(
+                text("""
+                    ALTER TABLE ZPMP_USERS
+                    ADD email VARCHAR(255) NULL
+                """)
+            )
+
+
+def _ensure_user_force_password_change_column() -> None:
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'ZPMP_USERS'
+                  AND COLUMN_NAME = 'force_password_change'
+            """)
+        ).scalar()
+
+        if not exists:
+            conn.execute(
+                text("""
+                    ALTER TABLE ZPMP_USERS
+                    ADD force_password_change BIT NOT NULL
+                    CONSTRAINT DF_ZPMP_USERS_FORCE_PASSWORD_CHANGE DEFAULT 0
+                """)
+            )            

@@ -6,6 +6,7 @@ export interface User {
   full_name: string
   role: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active: boolean
+  force_password_change: boolean
   failed_login_attempts: number
   blocked_until?: string | null
   last_failed_login_at?: string | null
@@ -15,6 +16,7 @@ export interface Token {
   access_token: string
   refresh_token: string
   token_type: string
+  force_password_change: boolean
 }
 
 export interface LoginCredentials {
@@ -38,6 +40,11 @@ export interface UpdateUserPayload {
 
 export interface ChangePasswordRequest {
   password: string
+}
+
+export interface FirstLoginChangePasswordRequest {
+  current_password: string
+  new_password: string
 }
 
 // ─── ZPM ─────────────────────────────────────────────────────────────────────

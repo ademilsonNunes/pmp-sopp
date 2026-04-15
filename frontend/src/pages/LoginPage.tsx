@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,6 +7,7 @@ import { toast } from 'sonner'
 import { Eye, EyeOff, LogIn, Factory, BarChart3, TrendingUp } from 'lucide-react'
 import { useAuthStore } from '../hooks/useAuth'
 import { getErrorMessage } from '../lib/utils'
+import { Link } from 'react-router-dom'
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Informe o usuário'),
@@ -15,6 +17,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
+  const navigate = useNavigate()
   const { login } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -30,8 +33,16 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      await login(data)
+      const result = await login(data)
+
+      if (result.force_password_change) {
+        toast.warning('Você precisa alterar a senha antes de continuar.')
+        navigate('/first-login-change-password', { replace: true })
+        return
+      }
+
       toast.success('Login realizado com sucesso!')
+      navigate('/', { replace: true })
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
@@ -41,12 +52,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Brand */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #D92214 0%, #8B0E0A 100%)' }}
       >
-        {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -left-20 w-72 h-72 bg-white/5 rounded-full" />
           <div className="absolute top-1/3 -right-16 w-56 h-56 bg-white/5 rounded-full" />
@@ -55,7 +64,6 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center px-12 text-center animate-fade-in">
-          {/* Logo */}
           <div className="mb-8 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
             <img
               src="https://sobelsuprema.site/wp-content/uploads/2023/07/Logo-Suprema-Slogan-Alta-ai-1.png"
@@ -77,7 +85,6 @@ export default function LoginPage() {
             Sobel Suprema Indústria e Comércio
           </p>
 
-          {/* Feature highlights */}
           <div className="space-y-4 w-full max-w-xs">
             {[
               { icon: Factory, label: 'Gestão de Produção', desc: 'Planeje e controle sua produção diária' },
@@ -90,7 +97,7 @@ export default function LoginPage() {
                 </div>
                 <div>
                   <p className="text-white font-semibold text-sm">{label}</p>
-                  <p className="text-white/60 text-xs">{desc}</p>
+                  <p className="text-white/70 text-xs">{desc}</p>
                 </div>
               </div>
             ))}
@@ -98,76 +105,71 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-gray-50">
-        <div className="w-full max-w-md animate-slide-up">
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-              style={{ background: 'linear-gradient(135deg, #D92214 0%, #8B0E0A 100%)' }}
-            >
-              <span className="text-white text-2xl font-bold">P</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">PMP Sistema</h1>
-            <p className="text-gray-500 text-sm mt-1">Plano Mestre de Produção</p>
-          </div>
+      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white p-8">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10 border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="lg:hidden mb-6">
+                <img
+                  src="https://sobelsuprema.site/wp-content/uploads/2023/07/Logo-Suprema-Slogan-Alta-ai-1.png"
+                  alt="Sobel Suprema"
+                  className="h-16 w-auto object-contain mx-auto"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
 
-          {/* Form card */}
-          <div className="card p-8 shadow-xl">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Bem-vindo!</h2>
-              <p className="text-gray-500 text-sm">Entre com suas credenciais para acessar o sistema</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo</h2>
+              <p className="text-gray-500">
+                Entre com suas credenciais para acessar o sistema
+              </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {/* Username */}
               <div>
-                <label className="label">Usuário</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Usuário
+                </label>
                 <input
-                  {...register('username')}
                   type="text"
+                  {...register('username')}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                   placeholder="Digite seu usuário"
-                  autoComplete="username"
-                  className={`input-field ${errors.username ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
-                  disabled={loading}
                 />
                 {errors.username && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.username.message}</p>
+                  <p className="text-sm text-red-600 mt-1">{errors.username.message}</p>
                 )}
               </div>
 
-              {/* Password */}
               <div>
-                <label className="label">Senha</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Senha
+                </label>
                 <div className="relative">
                   <input
-                    {...register('password')}
                     type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                     placeholder="Digite sua senha"
-                    autoComplete="current-password"
-                    className={`input-field pr-10 ${errors.password ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : ''}`}
-                    disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    tabIndex={-1}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">{errors.password.message}</p>
+                  <p className="text-sm text-red-600 mt-1">{errors.password.message}</p>
                 )}
               </div>
 
-              {/* Submit button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-primary flex items-center justify-center gap-2 py-3 text-base mt-2"
+                className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold py-3.5 px-4 rounded-xl hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0 mt-2"
               >
                 {loading ? (
                   <>
@@ -184,10 +186,17 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
+              <div className="text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-red-700 hover:text-red-800 font-medium"
+                >
+                  Esqueci minha senha
+                </Link>
+              </div>
             </form>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-xs text-gray-400 mt-6">
             © {new Date().getFullYear()} Sobel Suprema. Todos os direitos reservados.
           </p>
