@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import Generic, TypeVar, Any
+from typing import Generic, TypeVar, Any, Literal
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -10,6 +10,7 @@ T = TypeVar("T")
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
+    email: str | None = Field(None, max_length=255)
     full_name: str = Field("", max_length=100)
     password: str = Field(..., min_length=6)
     role: Literal["ADMIN", "PCP", "VIEWER"] = "VIEWER"
@@ -24,6 +25,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    force_password_change: bool = False
 
 
 class TokenData(BaseModel):
@@ -36,6 +38,7 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    force_password_change: bool
     failed_login_attempts: int
     blocked_until: datetime | None = None
     last_failed_login_at: datetime | None = None
@@ -49,16 +52,16 @@ class UserUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    current_password: str = Field(..., min_length=6)
-    new_password: str = Field(..., min_length=6)
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=10, max_length=100)
 
 
 class PasswordReset(BaseModel):
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=10, max_length=100)
 
 
 class ChangePasswordRequest(BaseModel):
-    password: str = Field(..., min_length=6, max_length=100)
+    password: str = Field(..., min_length=10, max_length=100)
 
 class RefreshRequest(BaseModel):
     refresh_token: str
@@ -76,6 +79,16 @@ class LoginAuditOut(BaseModel):
     motivo_falha: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=10, max_length=100)
+
+class MessageResponse(BaseModel):
+    message: str    
 
 
 # ─── ZPM ─────────────────────────────────────────────────────────────────────

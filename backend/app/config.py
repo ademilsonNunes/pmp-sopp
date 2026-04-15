@@ -41,5 +41,14 @@ class Settings(BaseSettings):
             if origin.strip()
         ]
 
+    # Frontend - email
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_USE_TLS: bool = True
 
 settings = Settings()

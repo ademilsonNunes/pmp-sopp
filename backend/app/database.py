@@ -67,11 +67,17 @@ def create_tables():
             models.ImportLog.__table__,
             models.RefreshToken.__table__,
             models.LoginAudit.__table__,
+            models.PasswordResetToken.__table__,
+            models.PasswordHistory.__table__,
         ],
     )
     _ensure_user_role_column()
     _ensure_user_security_columns()
     _ensure_login_audit_columns()
+    _ensure_user_email_column()
+    _ensure_user_force_password_change_column()
+    _ensure_password_history_table()
+    
 
 
 def _ensure_user_role_column() -> None:
@@ -190,6 +196,92 @@ def _ensure_login_audit_columns() -> None:
                         sucesso BIT NOT NULL,
                         motivo_falha VARCHAR(255) NULL
                     )
+                    """
+                )
+            )
+
+
+def _ensure_user_email_column() -> None:
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'ZPMP_USERS'
+                  AND COLUMN_NAME = 'email'
+            """)
+        ).scalar()
+
+        if not exists:
+            conn.execute(
+                text("""
+                    ALTER TABLE ZPMP_USERS
+                    ADD email VARCHAR(255) NULL
+                """)
+            )
+
+
+def _ensure_user_force_password_change_column() -> None:
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = 'ZPMP_USERS'
+                  AND COLUMN_NAME = 'force_password_change'
+            """)
+        ).scalar()
+
+        if not exists:
+            conn.execute(
+                text("""
+                    ALTER TABLE ZPMP_USERS
+                    ADD force_password_change BIT NOT NULL
+                    CONSTRAINT DF_ZPMP_USERS_FORCE_PASSWORD_CHANGE DEFAULT 0
+                """)
+            )
+
+def _ensure_password_history_table() -> None:
+    with engine.begin() as conn:
+        table_exists = conn.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_NAME = 'ZPMP_PASSWORD_HISTORY'
+                """
+            )
+        ).scalar()
+
+        if not table_exists:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE ZPMP_PASSWORD_HISTORY (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        hashed_password VARCHAR(255) NOT NULL,
+                        created_at DATETIME NOT NULL
+                            CONSTRAINT DF_ZPMP_PASSWORD_HISTORY_CREATED_AT DEFAULT GETDATE()
+                    )
+                    """
+                )
+            )
+
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IX_ZPMP_PASSWORD_HISTORY_USER_ID
+                    ON ZPMP_PASSWORD_HISTORY (user_id)
+                    """
+                )
+            )
+
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IX_ZPMP_PASSWORD_HISTORY_USER_CREATED
+                    ON ZPMP_PASSWORD_HISTORY (user_id, created_at DESC)
                     """
                 )
             )

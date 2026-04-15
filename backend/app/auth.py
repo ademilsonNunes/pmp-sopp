@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 import hashlib
+import secrets
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.config import settings
@@ -72,4 +73,10 @@ def verify_refresh_token(token: str) -> str | None:
     return payload.get("sub")
 
 def get_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def generate_password_reset_token() -> str:
+    return secrets.token_hex(32)
+
+def get_password_reset_token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

@@ -31,6 +31,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
+    if (error.response?.status === 403) {
+      return Promise.reject(error)
+    }
+
     if (error.response?.status !== 401 || originalRequest?._retry) {
       return Promise.reject(error)
     }
@@ -41,6 +45,7 @@ api.interceptors.response.use(
       localStorage.removeItem('pmp_token')
       localStorage.removeItem('pmp_refresh_token')
       localStorage.removeItem('pmp_user')
+      localStorage.removeItem('pmp_force_password_change')
       window.location.href = '/login'
       return Promise.reject(error)
     }
@@ -68,6 +73,13 @@ api.interceptors.response.use(
       localStorage.setItem('pmp_token', data.access_token)
       localStorage.setItem('pmp_refresh_token', data.refresh_token)
 
+      if (typeof data.force_password_change !== 'undefined') {
+        localStorage.setItem(
+          'pmp_force_password_change',
+          String(data.force_password_change),
+        )
+      }
+
       processQueue(null, data.access_token)
 
       originalRequest.headers.Authorization = `Bearer ${data.access_token}`
@@ -78,6 +90,7 @@ api.interceptors.response.use(
       localStorage.removeItem('pmp_token')
       localStorage.removeItem('pmp_refresh_token')
       localStorage.removeItem('pmp_user')
+      localStorage.removeItem('pmp_force_password_change')
       window.location.href = '/login'
 
       return Promise.reject(refreshError)

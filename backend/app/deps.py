@@ -10,7 +10,7 @@ from app.database import get_db
 security = HTTPBearer()
 
 
-def get_current_user(
+def _get_authenticated_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> models.User:
@@ -26,17 +26,37 @@ def get_current_user(
     user = db.execute(
         select(models.User).where(models.User.username == username)
     ).scalar_one_or_none()
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario nao encontrado",
         )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuario inativo",
         )
+
     return user
+
+
+def get_current_user(
+    current_user: models.User = Depends(_get_authenticated_user),
+) -> models.User:
+    if current_user.force_password_change:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Troca de senha obrigatória. Altere a senha em /auth/change-password para continuar.",
+        )
+    return current_user
+
+
+def get_current_user_allow_password_change(
+    current_user: models.User = Depends(_get_authenticated_user),
+) -> models.User:
+    return current_user
 
 
 def require_roles(*allowed_roles: str):
