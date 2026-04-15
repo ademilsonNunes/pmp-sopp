@@ -52,16 +52,16 @@ class UserUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    current_password: str = Field(..., min_length=6)
-    new_password: str = Field(..., min_length=6)
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=10, max_length=100)
 
 
 class PasswordReset(BaseModel):
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=10, max_length=100)
 
 
 class ChangePasswordRequest(BaseModel):
-    password: str = Field(..., min_length=6, max_length=100)
+    password: str = Field(..., min_length=10, max_length=100)
 
 class RefreshRequest(BaseModel):
     refresh_token: str
@@ -85,7 +85,7 @@ class ForgotPasswordRequest(BaseModel):
     email: str = Field(..., max_length=255)
 
 class ResetPasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=10, max_length=100)
 
 class MessageResponse(BaseModel):
     message: str    

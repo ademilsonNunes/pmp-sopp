@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from app import models, schemas
 from app.auth import (
     verify_password,
@@ -28,6 +28,71 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 10
+
+def _validate_password_policy(password: str) -> None:
+    if len(password) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha deve ter no mínimo 10 caracteres",
+        )
+
+    if not any(char.isupper() for char in password):
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha deve ter pelo menos 1 letra maiúscula",
+        )
+
+    if not any(char.isdigit() for char in password):
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha deve ter pelo menos 1 número",
+        )
+
+    if not any(not char.isalnum() for char in password):
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha deve ter pelo menos 1 caractere especial",
+        )
+
+
+def _ensure_password_not_in_history(
+    db: Session,
+    user: models.User,
+    new_password: str,
+) -> None:
+    # não pode ser igual à senha atual
+    if verify_password(new_password, user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha não pode ser igual à senha atual",
+        )
+
+    # não pode repetir nenhuma das 5 últimas senhas
+    history_items = db.execute(
+        select(models.PasswordHistory)
+        .where(models.PasswordHistory.user_id == user.id)
+        .order_by(desc(models.PasswordHistory.created_at), desc(models.PasswordHistory.id))
+        .limit(5)
+    ).scalars().all()
+
+    for item in history_items:
+        if verify_password(new_password, item.hashed_password):
+            raise HTTPException(
+                status_code=400,
+                detail="A nova senha não pode repetir nenhuma das últimas 5 senhas",
+            )
+
+
+def _store_current_password_in_history(
+    db: Session,
+    user: models.User,
+) -> None:
+    db.add(
+        models.PasswordHistory(
+            user_id=user.id,
+            hashed_password=user.hashed_password,
+        )
+    )
 
 
 def _get_client_ip(request: Request) -> str:
@@ -383,11 +448,16 @@ def change_password(
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Senha atual inválida")
 
-    if payload.current_password == payload.new_password:
-        raise HTTPException(status_code=400, detail="A nova senha deve ser diferente da senha atual")
+    _validate_password_policy(payload.new_password)
+    _ensure_password_not_in_history(db, current_user, payload.new_password)
+
+    _store_current_password_in_history(db, current_user)
 
     current_user.hashed_password = get_password_hash(payload.new_password)
     current_user.force_password_change = False
+    current_user.failed_login_attempts = 0
+    current_user.blocked_until = None
+    current_user.last_failed_login_at = None
 
     db.commit()
 

@@ -68,6 +68,7 @@ def create_tables():
             models.RefreshToken.__table__,
             models.LoginAudit.__table__,
             models.PasswordResetToken.__table__,
+            models.PasswordHistory.__table__,
         ],
     )
     _ensure_user_role_column()
@@ -75,6 +76,8 @@ def create_tables():
     _ensure_login_audit_columns()
     _ensure_user_email_column()
     _ensure_user_force_password_change_column()
+    _ensure_password_history_table()
+    
 
 
 def _ensure_user_role_column() -> None:
@@ -236,4 +239,49 @@ def _ensure_user_force_password_change_column() -> None:
                     ADD force_password_change BIT NOT NULL
                     CONSTRAINT DF_ZPMP_USERS_FORCE_PASSWORD_CHANGE DEFAULT 0
                 """)
-            )            
+            )
+
+def _ensure_password_history_table() -> None:
+    with engine.begin() as conn:
+        table_exists = conn.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_NAME = 'ZPMP_PASSWORD_HISTORY'
+                """
+            )
+        ).scalar()
+
+        if not table_exists:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE ZPMP_PASSWORD_HISTORY (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        hashed_password VARCHAR(255) NOT NULL,
+                        created_at DATETIME NOT NULL
+                            CONSTRAINT DF_ZPMP_PASSWORD_HISTORY_CREATED_AT DEFAULT GETDATE()
+                    )
+                    """
+                )
+            )
+
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IX_ZPMP_PASSWORD_HISTORY_USER_ID
+                    ON ZPMP_PASSWORD_HISTORY (user_id)
+                    """
+                )
+            )
+
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IX_ZPMP_PASSWORD_HISTORY_USER_CREATED
+                    ON ZPMP_PASSWORD_HISTORY (user_id, created_at DESC)
+                    """
+                )
+            )

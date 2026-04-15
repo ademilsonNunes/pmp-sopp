@@ -11,7 +11,12 @@ import { getErrorMessage } from '../lib/utils'
 const schema = z
   .object({
     current_password: z.string().min(1, 'Informe a senha atual'),
-    new_password: z.string().min(6, 'A nova senha deve ter no mínimo 6 caracteres'),
+    new_password: z
+      .string()
+      .min(10, 'A nova senha deve ter no mínimo 10 caracteres')
+      .refine((value) => /[A-Z]/.test(value), 'A nova senha deve ter pelo menos 1 letra maiúscula')
+      .refine((value) => /[0-9]/.test(value), 'A nova senha deve ter pelo menos 1 número')
+      .refine((value) => /[^A-Za-z0-9]/.test(value), 'A nova senha deve ter pelo menos 1 caractere especial'),
     confirm_password: z.string().min(1, 'Confirme a nova senha'),
   })
   .refine((data) => data.new_password === data.confirm_password, {
@@ -67,6 +72,9 @@ export default function FirstLoginChangePasswordPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-2">
             No primeiro acesso, você precisa definir uma nova senha antes de continuar.
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            A senha deve ter no mínimo 10 caracteres, 1 letra maiúscula, 1 número e 1 caractere especial.
           </p>
         </div>
 
