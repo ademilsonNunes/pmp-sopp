@@ -35,6 +35,7 @@ class TokenData(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
+    email: str | None = None
     full_name: str
     role: str
     is_active: bool
@@ -46,6 +47,7 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
 class UserUpdate(BaseModel):
+    email: str | None = Field(None, max_length=255)
     full_name: str | None = Field(None, max_length=100)
     role: str | None = Field(None, max_length=20)
     is_active: bool | None = None

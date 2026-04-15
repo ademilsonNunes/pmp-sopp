@@ -3,6 +3,7 @@
 export interface User {
   id: number
   username: string
+  email?: string | null
   full_name: string
   role: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active: boolean
@@ -26,6 +27,7 @@ export interface LoginCredentials {
 
 export interface CreateUserPayload {
   username: string
+  email: string | null
   full_name: string
   password: string
   role: 'ADMIN' | 'PCP' | 'VIEWER'
@@ -33,6 +35,7 @@ export interface CreateUserPayload {
 
 export interface UpdateUserPayload {
   username?: string
+  email?: string | null
   full_name?: string
   role?: 'ADMIN' | 'PCP' | 'VIEWER'
   is_active?: boolean

@@ -383,13 +383,25 @@ def register(
     if existing:
         raise HTTPException(status_code=400, detail="Nome de usuário já está em uso")
 
+    email = user_data.email.strip().lower() if user_data.email else None
+
+    if email:
+        existing_email = db.execute(
+            select(models.User).where(models.User.email == email)
+        ).scalar_one_or_none()
+
+        if existing_email:
+            raise HTTPException(status_code=400, detail="E-mail já está em uso")
+
     user = models.User(
         username=user_data.username,
+        email=email,
         full_name=user_data.full_name,
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role.upper(),
         force_password_change=True,
     )
+
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -430,6 +442,20 @@ def update_user(
 
     if "role" in data:
         data["role"] = data["role"].upper()
+
+    if "email" in data:
+        data["email"] = data["email"].strip().lower() if data["email"] else None
+    
+        if data["email"]:
+            existing_email = db.execute(
+                select(models.User).where(
+                    models.User.email == data["email"],
+                    models.User.id != user_id,
+                )
+            ).scalar_one_or_none()
+    
+            if existing_email:
+                raise HTTPException(status_code=400, detail="E-mail já está em uso") 
 
     for field, value in data.items():
         setattr(user, field, value)
