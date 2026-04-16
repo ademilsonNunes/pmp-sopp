@@ -19,6 +19,11 @@ import type { CreateUserPayload, User } from '../types'
 
 const createUserSchema = z.object({
   username: z.string().min(3, 'Mínimo 3 caracteres'),
+  email: z
+    .string()
+    .trim()
+    .email('Informe um e-mail válido')
+    .or(z.literal('')),
   full_name: z.string().min(1, 'Informe o nome completo'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   role: z.enum(['ADMIN', 'PCP', 'VIEWER']),
@@ -46,6 +51,7 @@ export default function UsersPage() {
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       username: '',
+      email: '',
       full_name: '',
       password: '',
       role: 'VIEWER',
@@ -56,7 +62,7 @@ export default function UsersPage() {
     const q = search.trim().toLowerCase()
     if (!q) return users
     return users.filter((u) =>
-      [u.username, u.full_name, u.role].some((value) =>
+      [u.username, u.email, u.full_name, u.role].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     )
@@ -64,7 +70,10 @@ export default function UsersPage() {
 
   const onSubmit = async (data: CreateUserPayload) => {
     try {
-      await createUser.mutateAsync(data)
+      await createUser.mutateAsync({
+        ...data,
+        email: data.email?.trim() ? data.email.trim() : null,
+      })
       toast.success('Usuário criado com sucesso!')
       reset()
     } catch (err) {
@@ -249,6 +258,19 @@ export default function UsersPage() {
                 </div>
 
                 <div>
+                  <label className="label">E-mail</label>
+                  <input
+                    {...register('email')}
+                    type="email"
+                    className={`input-field ${errors.email ? 'border-red-400' : ''}`}
+                    placeholder="Ex.: joao@empresa.com"
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
                   <label className="label">Senha inicial</label>
                   <input
                     {...register('password')}
@@ -310,6 +332,7 @@ export default function UsersPage() {
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Nome</th>
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Usuário</th>
+                        <th className="text-left py-3 pr-3 font-semibold text-gray-700">E-mail</th>
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Perfil</th>
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Status</th>
                         <th className="text-left py-3 font-semibold text-gray-700">Ações</th>
@@ -322,6 +345,7 @@ export default function UsersPage() {
                             <div className="font-medium text-gray-900">{u.full_name}</div>
                           </td>
                           <td className="py-3 pr-3 text-gray-600">@{u.username}</td>
+                          <td className="py-3 pr-3 text-gray-600">{u.email || '-'}</td>
                           <td className="py-3 pr-3">
                             <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                               {u.role}
