@@ -8,7 +8,7 @@ import { useDashboard } from '../../hooks/useSopp'
 import { formatNumber, fmtMes, fmtDiario } from '../../lib/utils'
 
 function KpiCard({
-  icon: Icon, label, value, sub, pct, pctColor, color,
+  icon: Icon, label, value, sub, pct, pctColor, color, className = '',
 }: {
   icon: React.ElementType
   label: string
@@ -17,10 +17,11 @@ function KpiCard({
   pct?: string        // ex: "2,2% do fat."
   pctColor?: string   // ex: "#ea580c"
   color: string
+  className?: string
 }) {
   const fontSize = value.length > 12 ? 'text-lg' : value.length > 9 ? 'text-xl' : 'text-2xl'
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-4">
+    <div className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 ${className}`}>
       <div className="rounded-lg p-2.5 flex-shrink-0" style={{ backgroundColor: `${color}18` }}>
         <Icon size={22} style={{ color }} />
       </div>
@@ -70,15 +71,9 @@ export default function SoppDashboard() {
   const { kpis, fat_mensal, carteira_por_linha, producao_diaria, estoque_top10 } = data
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">S&OP — Visão Gerencial</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Dados consolidados de carteira, produção, estoque e faturamento.
-        </p>
-      </div>
-
+      <div></div>
       {/* KPIs */}
       {(() => {
         const pctFat = (v: number) =>
@@ -86,38 +81,66 @@ export default function SoppDashboard() {
             ? formatNumber((v / kpis.fat_mes_atual) * 100, 1) + '% do fat.'
             : '—'
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-            <KpiCard icon={ShoppingCart}  label="Carteira em aberto"
-              value={formatNumber(kpis.qtde_carteira, 0) + ' cx'}
-              sub={BRL(kpis.valor_carteira)}
-              color="#D92214" />
-            <KpiCard icon={Receipt}       label="Faturamento do mês"
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 auto-rows-fr">
+            <KpiCard
+              icon={Receipt}
+              label="Faturamento do mês"
               value={formatNumber(kpis.qtde_fat_mes, 0) + ' cx'}
               sub={BRL(kpis.fat_mes_atual)}
-              color="#2563eb" />
-            <KpiCard icon={ArrowDownLeft} label="Devoluções do mês"
+              color="#2563eb"
+              className="xl:row-span-2"
+            />
+
+            <KpiCard
+              icon={ShoppingCart}
+              label="Carteira em aberto"
+              value={formatNumber(kpis.qtde_carteira, 0) + ' cx'}
+              sub={BRL(kpis.valor_carteira)}
+              color="#D92214"
+            />
+
+            <KpiCard
+              icon={ArrowDownLeft}
+              label="Devoluções do mês"
               value={formatNumber(kpis.qtde_devol_mes, 0) + ' cx'}
               sub={BRL(kpis.fat_devol_mes)}
               pct={pctFat(kpis.fat_devol_mes)}
               pctColor="#ea580c"
-              color="#ea580c" />
-            <KpiCard icon={Gift}          label="Bonificações do mês"
+              color="#ea580c"
+            />
+
+            <KpiCard
+              icon={Gift}
+              label="Bonificações do mês"
               value={formatNumber(kpis.qtde_bonif_mes, 0) + ' cx'}
               sub={BRL(kpis.fat_bonif_mes)}
               pct={pctFat(kpis.fat_bonif_mes)}
               pctColor="#d97706"
-              color="#d97706" />
-            <KpiCard icon={Factory}       label="Produção do mês (PA)"
+              color="#d97706"
+            />
+
+            <KpiCard
+              icon={Factory}
+              label="Produção do mês (PA)"
               value={formatNumber(kpis.prod_mes_atual, 0) + ' cx'}
-              color="#16a34a" />
-            <KpiCard icon={Boxes}         label="Estoque disponível"
+              color="#16a34a"
+            />
+
+            <KpiCard
+              icon={Boxes}
+              label="Estoque disponível"
               value={formatNumber(kpis.estoque_disponivel, 0) + ' cx'}
               sub="Sobel (010)"
-              color="#9333ea" />
-            <KpiCard icon={TrendingUp}    label="Ticket médio (cx)"
+              color="#9333ea"
+            />
+
+            <KpiCard
+              icon={TrendingUp}
+              label="Ticket médio (cx)"
               value={BRL(kpis.fat_mes_atual / Math.max(kpis.qtde_fat_mes, 1))}
               sub="Fat. líq. ÷ cx faturadas"
-              color="#0891b2" />
+              color="#0891b2"
+            />
           </div>
         )
       })()}

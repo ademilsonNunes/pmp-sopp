@@ -51,9 +51,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-[100dvh] flex bg-white overflow-x-hidden lg:overflow-hidden">
       <div
-        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative overflow-hidden"
+        className="hidden lg:flex lg:w-1/2 min-h-[100dvh] flex-col items-center justify-center relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #D92214 0%, #8B0E0A 100%)' }}
       >
         <div className="absolute inset-0 overflow-hidden">
@@ -64,50 +64,34 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center px-12 text-center animate-fade-in">
-          <div className="mb-8 bg-white/10 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+          <div className="mb-8">
             <img
-              src="https://sobelsuprema.site/wp-content/uploads/2023/07/Logo-Suprema-Slogan-Alta-ai-1.png"
+              src="/Logo-Suprema.png"
               alt="Sobel Suprema"
-              className="h-24 w-auto object-contain"
+              className="max-h-none h-[270px] w-auto object-contain"
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
               }}
             />
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
-            PMP Sistema
-          </h1>
           <p className="text-white/80 text-lg font-medium mb-2">
-            Plano Mestre de Produção
+            Portal de Planejamento
           </p>
+          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
+            PMP & S&OP
+          </h1>
           <p className="text-white/60 text-sm mb-12">
-            Sobel Suprema Indústria e Comércio
+            
           </p>
 
-          <div className="space-y-4 w-full max-w-xs">
-            {[
-              { icon: Factory, label: 'Gestão de Produção', desc: 'Planeje e controle sua produção diária' },
-              { icon: BarChart3, label: 'Análise Completa', desc: 'Visualize dados por produto e período' },
-              { icon: TrendingUp, label: 'Importação CSV', desc: 'Importe planos em massa com facilidade' },
-            ].map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3 text-left bg-white/10 rounded-xl p-3">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Icon size={16} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{label}</p>
-                  <p className="text-white/70 text-xs">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white p-8">
+      <div className="w-full lg:w-1/2 min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-gray-50 to-white px-4 py-6 sm:px-6 lg:p-8 overflow-y-auto">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10 border border-gray-100">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-10 border border-gray-100">
             <div className="text-center mb-8">
               <div className="lg:hidden mb-6">
                 <img
@@ -120,7 +104,7 @@ export default function LoginPage() {
                 />
               </div>
 
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Bem-vindo</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Bem-vindo</h2>
               <p className="text-gray-500">
                 Entre com suas credenciais para acessar o sistema
               </p>

@@ -15,39 +15,21 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              className="w-12 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ backgroundColor: '#D92214' }}
             >
-              <Factory size={18} className="text-white" />
+              <img src="/Logo-Suprema-ss.png" alt="Logo Sobel Suprema" className="w-10 h-7" />
+              {/*<Factory size={18} className="text-white" />*/}
             </div>
             <div className="hidden sm:block">
-              <span className="text-white font-bold text-lg tracking-tight">PMP</span>
-              <span className="text-gray-400 text-xs block leading-none">Plano Mestre de Produção</span>
+              <span className="text-white font-bold text-lg tracking-tight">SOBEL SUPREMA</span>
+              <span className="text-gray-400 text-xs block leading-none">PMP & S&OP</span>
             </div>
           </div>
           
-          {/* Sobel Suprema logo */}
-          {/* <div className="hidden md:block ml-4 pl-4 border-l border-gray-600">
-            <img
-              src="https://sobelsuprema.site/wp-content/uploads/2023/07/Logo-Suprema-Slogan-Alta-ai-1.png"
-              alt="Sobel Suprema"
-              className="h-8 w-auto object-contain brightness-0 invert opacity-80"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-          </div> */}
          
           {/* Module nav */}
           <nav className="hidden md:flex items-center gap-1 ml-6 pl-6 border-l border-gray-600">
-            <NavLink to="/" end
-              className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`
-              }>
-              <Factory size={14} /> PMP
-            </NavLink>
             {user?.role === 'ADMIN' && (
               <NavLink
                 to="/users"
@@ -57,16 +39,26 @@ export default function Navbar() {
                   }`
                 }
               >
-                <Users size={14} /> Usuários
+                <Users size={16} /> USUÁRIOS
               </NavLink>
             )}
+
+            <NavLink to="/" end
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`
+              }>
+              <Factory size={16} /> PMP
+            </NavLink>
+
             <NavLink to="/sopp"
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
                 }`
               }>
-              <BarChart2 size={14} /> S&amp;OP
+              <BarChart2 size={16} /> S&amp;OP
             </NavLink>
           </nav>
         </div>
@@ -88,7 +80,7 @@ export default function Navbar() {
                 {user?.full_name || user?.username || 'Usuário'}
               </p>
               <p className="text-gray-400 text-xs">
-                @{user?.username} {user?.role ? `· ${user.role}` : ''}
+                {user?.username} {user?.role ? `· ${user.role}` : ''}
               </p>
             </div>
             <ChevronDown
@@ -110,7 +102,7 @@ export default function Navbar() {
                     {user?.full_name || user?.username}
                   </p>
                   <p className="text-xs text-gray-500">
-                    @{user?.username} {user?.role ? `· ${user.role}` : ''}
+                    {user?.username} {user?.role ? `· ${user.role}` : ''}
                   </p>
                 </div>
                 <button

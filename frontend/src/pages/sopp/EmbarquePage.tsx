@@ -81,20 +81,6 @@ export default function EmbarquePage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Prog. Embarque — Ruptura por Produto</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Demanda por DT_CARREGAMENTO × Estoque disponível × PMP — identifica rupturas nos próximos dias.
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 bg-white"
-        >
-          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-          Atualizar
-        </button>
       </div>
 
       {/* Filtros */}
@@ -159,6 +145,14 @@ export default function EmbarquePage() {
             className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white"
           />
         </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 bg-white"
+        >
+          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          Atualizar
+        </button>
       </div>
 
       {/* KPIs */}

@@ -47,58 +47,28 @@ export default function FaturamentoPage() {
   const totalLiquido = charts?.por_mes.reduce((s, r) => s + r.liquido, 0) ?? 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Faturamento</h1>
-          <p className="text-sm text-gray-500">
-            {data ? `${data.total.toLocaleString('pt-BR')} notas` : '—'}
-            {charts && ` · Líquido: ${BRL(totalLiquido)}`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowDevol(s => !s)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-50">
-            {showDevol ? 'Ocultar' : 'Ver'} devoluções
-          </button>
-          <button onClick={() => setShowCharts(s => !s)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-            <Filter size={14} /> {showCharts ? 'Ocultar' : 'Mostrar'} gráficos
-          </button>
-          <button onClick={() => exportFaturamento(filters)}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
-            style={{ backgroundColor: '#D92214' }}>
-            <Download size={14} /> Exportar XLSX
-          </button>
-        </div>
+      <div>
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex gap-2">
-            <input type="text" placeholder="Produto, cliente, NF…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applySearch()}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg w-48" />
-            <button onClick={applySearch}
-              className="px-3 py-2 rounded-lg text-white" style={{ backgroundColor: '#D92214' }}>
-              <Search size={15} />
-            </button>
-          </div>
-
+        {/* Linha 1 */}
+        <div className="flex flex-1 min-w-0 gap-3">
           <select value={filters.linha || ''} onChange={e => setFilter('linha', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white w-48">
             <option value="">Todas as linhas</option>
             {LINHAS.map(l => <option key={l}>{l}</option>)}
           </select>
-
-          <select value={filters.vendedor || ''} onChange={e => setFilter('vendedor', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
-            <option value="">Todos os vendedores</option>
-            {filterOpts?.vendedores_faturamento.map(v => <option key={v}>{v}</option>)}
-          </select>
+          
+          <div className="flex flex-1 min-w-0 gap-2">
+            <select value={filters.vendedor || ''} onChange={e => setFilter('vendedor', e.target.value)}
+              className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
+              <option value="">Todos os vendedores</option>
+              {filterOpts?.vendedores_faturamento.map(v => <option key={v}>{v}</option>)}
+            </select>
+          </div>
 
           <select value={filters.uf || ''} onChange={e => setFilter('uf', e.target.value)}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white">
@@ -112,20 +82,43 @@ export default function FaturamentoPage() {
           <input type="date" value={filters.date_to || ''}
             onChange={e => setFilter('date_to', e.target.value)}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+        </div>
 
+        {/* Linha 2 */}
+        <div className="flex items-center gap-3 mt-3">
           <label className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
             <input type="checkbox" checked={!!filters.excluir_dev}
               onChange={e => setFilter('excluir_dev', e.target.checked)}
               className="accent-red-600" />
             Excluir devoluções
           </label>
-
-          {Object.keys({ ...filters, excluir_dev: undefined }).filter(k => !!(filters as Record<string, unknown>)[k]).length > 0 && (
-            <button onClick={() => { setFilters({ excluir_dev: true }); setSearch(''); setPage(1) }}
-              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-              Limpar
-            </button>
-          )}
+          <div className="flex flex-1 min-w-0 gap-2">
+              <button onClick={() => setShowCharts(s => !s)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                <Filter size={14} /> {showCharts ? 'Ocultar' : 'Mostrar'} gráficos
+              </button>
+            <div className="flex flex-1 min-w-0 gap-2">
+              <input type="text" placeholder="Produto, cliente, NF…"
+                value={search} onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && applySearch()}
+                className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+              <button onClick={applySearch}
+                className="px-3 py-2 rounded-lg text-white" style={{ backgroundColor: '#D92214' }}>
+                <Search size={15} />
+              </button>
+              {Object.keys({ ...filters, excluir_dev: undefined }).filter(k => !!(filters as Record<string, unknown>)[k]).length > 0 && (
+                <button onClick={() => { setFilters({ excluir_dev: true }); setSearch(''); setPage(1) }}
+                  className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+                  Limpar
+                </button>
+              )}
+            </div>
+              <button onClick={() => exportFaturamento(filters)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
+                style={{ backgroundColor: '#D92214' }}>
+                <Download size={14} /> Exportar XLSX
+              </button>
+          </div>
         </div>
       </div>
 
