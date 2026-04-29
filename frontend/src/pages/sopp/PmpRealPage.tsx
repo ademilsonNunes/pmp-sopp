@@ -108,8 +108,6 @@ export default function PmpRealPage() {
     <div className="space-y-4">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Programado vs Real</h1>
-        <p className="text-sm text-gray-500">PMP × Produção realizada por SKU</p>
       </div>
 
       {/* Filters */}
@@ -174,7 +172,7 @@ export default function PmpRealPage() {
       </div>
 
       {/* Legenda */}
-      <div className="flex gap-4 text-xs text-gray-500 flex-wrap">
+      <div className="flex gap-4 text-xs justify-center text-gray-500 flex-wrap">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 inline-block" /> ≥ 100%</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-50 inline-block" /> 75–99%</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-50 inline-block" /> 50–74%</span>

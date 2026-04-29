@@ -24,14 +24,14 @@ export default function SoppLayout() {
         style={{ backgroundColor: '#fff' }}
       >
         <div className="max-w-screen-2xl mx-auto px-4">
-          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1">
+          <nav className="flex w-full items-stretch gap-1 py-1">
             {NAV.map(({ to, label, Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  `flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                     isActive
                       ? 'text-white'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus, Users, Shield, UserX, KeyRound, RefreshCw } from 'lucide-react'
+import { Plus, Users, Shield, UserX, KeyRound, RefreshCw, Check, X, Lock, Unlock,} from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import {
   useUsersList,
@@ -143,10 +143,20 @@ export default function UsersPage() {
     return new Date(value).toLocaleString('pt-BR')
   }
 
+  const maskEmail = (email?: string | null) => {
+    if (!email) return '-'
+    if (email.length <= 18) return email
+
+    const start = email.slice(0, 7)
+    const end = email.slice(-10)
+
+    return `${start}***${end}`
+  }
+
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell">
       <Navbar />
 
       <main className="pt-16">
@@ -154,20 +164,20 @@ export default function UsersPage() {
           className="px-4 sm:px-6 py-6"
           style={{ background: 'linear-gradient(135deg, #32373c 0%, #1a1d20 100%)' }}
         >
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto w-full">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 break-words">
                   Gestão de Usuários
                 </h1>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 text-sm break-words">
                   Cadastre, ative, inative e redefina senhas de usuários do sistema
                 </p>
               </div>
 
               <button
                 onClick={() => refetch()}
-                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="self-start sm:self-auto p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                 title="Atualizar"
               >
                 <RefreshCw size={18} className={isFetching ? 'animate-spin' : ''} />
@@ -224,9 +234,9 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-1">
-            <div className="card p-6">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+          <div className="xl:col-span-1 min-w-0">
+            <div className="card p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Plus size={18} className="text-primary" />
                 <h2 className="text-lg font-bold text-gray-900">Novo usuário</h2>
@@ -307,9 +317,9 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div className="xl:col-span-2">
-            <div className="card p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="xl:col-span-2 min-w-0">
+            <div className="card p-4 sm:p-6 overflow-hidden">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4 min-w-0">
                 <h2 className="text-lg font-bold text-gray-900">Usuários cadastrados</h2>
 
                 <input
@@ -317,7 +327,7 @@ export default function UsersPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar por nome, usuário ou perfil..."
-                  className="input-field sm:max-w-sm"
+                  className="input-field w-full lg:max-w-sm"
                 />
               </div>
 
@@ -326,8 +336,8 @@ export default function UsersPage() {
               ) : filteredUsers.length === 0 ? (
                 <div className="py-10 text-center text-gray-500">Nenhum usuário encontrado.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div className="hidden md:block table-scroll">
+                  <table className="w-full min-w-[760px] text-sm">
                     <thead>
                       <tr className="border-b border-gray-200">
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Nome</th>
@@ -335,17 +345,17 @@ export default function UsersPage() {
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">E-mail</th>
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Perfil</th>
                         <th className="text-left py-3 pr-3 font-semibold text-gray-700">Status</th>
-                        <th className="text-left py-3 font-semibold text-gray-700">Ações</th>
+                        <th className="text-left py-3 w-[160px] min-w-[160px] font-semibold text-gray-700">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredUsers.map((u) => (
-                        <tr key={u.id} className="border-b border-gray-100">
+                        <tr key={u.id} className="border-b border-gray-100 align-top">
                           <td className="py-3 pr-3">
-                            <div className="font-medium text-gray-900">{u.full_name}</div>
+                            <div className="font-medium text-gray-900 break-words">{u.full_name}</div>
                           </td>
-                          <td className="py-3 pr-3 text-gray-600">@{u.username}</td>
-                          <td className="py-3 pr-3 text-gray-600">{u.email || '-'}</td>
+                          <td className="py-3 pr-3 text-gray-600">{u.username}</td>
+                          <td className="py-3 pr-3 text-gray-600" title={u.email || ''}>{maskEmail(u.email)}</td>
                           <td className="py-3 pr-3">
                             <span className="inline-flex px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                               {u.role}
@@ -370,41 +380,55 @@ export default function UsersPage() {
                               )}
                             </div>
                           </td>
-                          <td className="py-3">
-                            <div className="flex flex-wrap gap-2">
+                          <td className="py-3 min-w-[160px] align-top">
+                            <div className="flex flex-wrap items-center gap-2 max-w-[160px]">
                               <button
                                 onClick={() => handleResetPassword(u)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                                title="Redefinir senha"
+                                aria-label={`Redefinir senha de ${u.full_name}`}
+                                className="action-circle-btn action-blue"
                               >
-                                <span className="inline-flex items-center gap-1">
-                                  <KeyRound size={14} />
-                                  Senha
-                                </span>
+                                <KeyRound size={16} />
                               </button>
 
-                              {isUserBlocked(u) && (
+                              {isUserBlocked(u) ? (
                                 <button
                                   onClick={() => handleUnlock(u)}
                                   disabled={unlockUser.isPending}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                  title="Usuário bloqueado - clicar para desbloquear"
+                                  aria-label={`Desbloquear ${u.full_name}`}
+                                  className="action-circle-btn action-amber disabled:opacity-50"
                                 >
-                                  Desbloquear
+                                  <Lock size={16} />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  title="Usuário desbloqueado"
+                                  className="action-circle-btn action-gray cursor-default"
+                                  disabled
+                                >
+                                  <Unlock size={16} />
                                 </button>
                               )}
 
                               {u.is_active ? (
                                 <button
                                   onClick={() => handleDeactivate(u)}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                                  title="Inativar usuário"
+                                  aria-label={`Inativar ${u.full_name}`}
+                                  className="action-circle-btn action-red"
                                 >
-                                  Inativar
+                                  <X size={16} />
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleActivate(u)}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                                  title="Ativar usuário"
+                                  aria-label={`Ativar ${u.full_name}`}
+                                  className="action-circle-btn action-green"
                                 >
-                                  Ativar
+                                  <Check size={16} />
                                 </button>
                               )}
                             </div>

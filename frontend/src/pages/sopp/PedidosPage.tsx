@@ -71,28 +71,78 @@ export default function PedidosPage() {
   const hasFilters = Object.keys(filters).length > 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Carteira de Pedidos — S&OP</h1>
-          <p className="text-sm text-gray-500">
-            {data ? `${data.total.toLocaleString('pt-BR')} pedidos em aberto` : '—'}
-            {' · volume em caixas'}
-          </p>
+      <div className="flex items-center justify-between flex-wrap gap-1">
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+
+          <select
+            value={filters.linha || ''}
+            onChange={e => setFilter('linha', e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+          >
+            <option value="">Todas as linhas</option>
+            {LINHAS.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+
+          <select
+            value={filters.formato || ''}
+            onChange={e => setFilter('formato', e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+          >
+            <option value="">Todos os formatos</option>
+            {FORMATOS.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+
+          <input type="date" placeholder="Entrega de"
+            value={filters.date_from || ''}
+            onChange={e => setFilter('date_from', e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+
+          <input type="date" placeholder="Entrega até"
+            value={filters.date_to || ''}
+            onChange={e => setFilter('date_to', e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+
+          <div className="flex flex-1 min-w-0 gap-2">
+            <input
+              type="text"
+              placeholder="Produto, cliente…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applySearch()}
+              className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg w-72"
+            />
+            <button onClick={applySearch}
+              className="px-3 py-2 rounded-lg text-white"
+              style={{ backgroundColor: '#D92214' }}>
+              <Search size={15} />
+            </button>
+          </div>
+
+          {hasFilters && (
+            <button onClick={() => { setFilters({}); setSearch(''); setPage(1) }}
+              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+              Limpar
+            </button>
+          )}
+            <button
+              onClick={() => exportPedidos(filters)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
+              style={{ backgroundColor: '#D92214' }}
+            >
+              <Download size={14} />
+              Exportar XLSX
+            </button>
         </div>
-        <button
-          onClick={() => exportPedidos(filters)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
-          style={{ backgroundColor: '#D92214' }}
-        >
-          <Download size={14} />
-          Exportar XLSX
-        </button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <KpiCard
           label="Pedidos em aberto"
           value={kpis ? kpis.total_pedidos.toLocaleString('pt-BR') : '—'}
@@ -125,62 +175,6 @@ export default function PedidosPage() {
         />
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Produto, cliente…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applySearch()}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg w-44"
-            />
-            <button onClick={applySearch}
-              className="px-3 py-2 rounded-lg text-white"
-              style={{ backgroundColor: '#D92214' }}>
-              <Search size={15} />
-            </button>
-          </div>
-
-          <select
-            value={filters.linha || ''}
-            onChange={e => setFilter('linha', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
-          >
-            <option value="">Todas as linhas</option>
-            {LINHAS.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-
-          <select
-            value={filters.formato || ''}
-            onChange={e => setFilter('formato', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
-          >
-            <option value="">Todos os formatos</option>
-            {FORMATOS.map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
-
-          <input type="date" placeholder="Entrega de"
-            value={filters.date_from || ''}
-            onChange={e => setFilter('date_from', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
-
-          <input type="date" placeholder="Entrega até"
-            value={filters.date_to || ''}
-            onChange={e => setFilter('date_to', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
-
-          {hasFilters && (
-            <button onClick={() => { setFilters({}); setSearch(''); setPage(1) }}
-              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-              Limpar
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Charts — Volume por Linha e por Formato */}
       {charts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -189,7 +183,7 @@ export default function PedidosPage() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Volume por linha (caixas)
             </h3>
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={230}>
               <BarChart data={charts.por_linha} layout="vertical"
                 margin={{ top: 0, right: 60, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -206,12 +200,12 @@ export default function PedidosPage() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Volume por formato (caixas)
             </h3>
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={230}>
               <BarChart data={charts.por_formato} layout="vertical"
                 margin={{ top: 0, right: 60, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => formatNumber(+v, 0)} />
-                <YAxis dataKey="formato" type="category" tick={{ fontSize: 11 }} width={55} />
+                <YAxis dataKey="formato" type="category" tick={{ fontSize: 11 }} width={50} />
                 <Tooltip formatter={(v) => fmtQtde(v as number)} />
                 <Bar dataKey="qtde" name="Caixas" fill="#2563eb" radius={[0, 4, 4, 0]} />
               </BarChart>

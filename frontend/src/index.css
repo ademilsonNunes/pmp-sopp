@@ -17,16 +17,45 @@
     padding: 0;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    width: 100%;
+  }
+  
   html {
+    height: 100vh;
     font-family: 'Montserrat', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-gray-50 text-gray-900;
     font-family: 'Montserrat', sans-serif;
+    overflow-x: hidden;
   }
+
+  img,
+  svg,
+  canvas,
+  video {
+    max-width: 100%;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  button:focus {
+    outline: none;
+  }
+
 
   /* Custom scrollbar */
   ::-webkit-scrollbar {
@@ -75,7 +104,7 @@
   }
 
   .input-field {
-    @apply w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium transition-all duration-200 bg-white;
+    @apply w-full min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium transition-all duration-200 bg-white;
     @apply focus:border-primary focus:ring-2 focus:ring-primary/20;
     @apply placeholder:text-gray-400;
   }
@@ -124,6 +153,73 @@
     @apply w-full text-center border border-gray-200 rounded-md py-1.5 px-1 text-sm font-medium transition-colors;
     @apply focus:border-primary focus:ring-1 focus:ring-primary/20 focus:bg-primary/5;
     @apply hover:border-gray-300;
+  }
+
+  .page-shell {
+    @apply min-h-[100dvh] bg-gray-50 overflow-x-hidden;
+  }
+
+  .page-content {
+    @apply w-full max-w-full mx-auto px-4 sm:px-6;
+  }
+
+  .table-scroll {
+    @apply w-full max-w-full overflow-x-auto;
+  }
+
+  .action-icon-btn {
+    @apply h-9 w-9 rounded-full inline-flex items-center justify-center transition-all duration-200;
+    @apply border shadow-sm;
+  }
+  
+  .action-pill-btn {
+    @apply h-10 min-w-[92px] px-3 rounded-full inline-flex items-center justify-center transition-all duration-200;
+    @apply border shadow-sm;
+  }
+  
+  .action-blue {
+    @apply bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100;
+  }
+  
+  .action-green {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100;
+  }
+  
+  .action-red {
+    @apply bg-red-50 text-red-700 border-red-200 hover:bg-red-100;
+  }
+  
+  .action-amber {
+    @apply bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100;
+  }
+  
+  .action-gray {
+    @apply bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100;
+  }
+
+  .action-circle-btn {
+    @apply h-9 w-9 rounded-full inline-flex items-center justify-center transition-all duration-200;
+    @apply border shadow-sm;
+  }
+  
+  .action-blue {
+    @apply bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100;
+  }
+  
+  .action-green {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100;
+  }
+  
+  .action-red {
+    @apply bg-red-50 text-red-700 border-red-200 hover:bg-red-100;
+  }
+  
+  .action-amber {
+    @apply bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100;
+  }
+  
+  .action-gray {
+    @apply bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100;
   }
 }
 
@@ -178,4 +274,9 @@
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+.logo_suprema_login img {
+  width: 100px;
+  height: 100px;
 }

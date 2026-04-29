@@ -45,7 +45,7 @@ const L = { prod: 0, linha: W.prod }
 export default function ForecastPage() {
   const [filters, setFilters] = useState<ForecastParams>({})
   const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<'grid' | 'resumo'>('grid')
+  const [activeTab, setActiveTab] = useState<'grid' | 'resumo'>('resumo')
 
   const { data, isLoading } = useForecast(filters)
   const { data: summary } = useForecastSummary()
@@ -55,43 +55,32 @@ export default function ForecastPage() {
   const totalSkus = data?.items.length ?? 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Forecast de Demanda</h1>
-          <p className="text-sm text-gray-500">
-            {totalSkus > 0 ? `${totalSkus} SKUs` : '—'}
-            {' · '}Forecast vs Realizado por mês
-          </p>
         </div>
-        <button onClick={() => exportForecast(filters)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
-          style={{ backgroundColor: '#D92214' }}>
-          <Download size={14} /> Exportar XLSX
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        {(['grid', 'resumo'] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              activeTab === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'
-            }`}>
-            {t === 'grid' ? 'Grid SKU' : 'Resumo por Linha'}
-          </button>
-        ))}
       </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div className="flex flex-wrap gap-3">
-          <div className="flex gap-2">
+          {/* Tabs */}
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+            {(['grid', 'resumo'] as const).map(t => (
+              <button key={t} onClick={() => setActiveTab(t)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                }`}>
+                {t === 'grid' ? 'Grid SKU' : 'Grid Linha'}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-1 min-w-0 gap-2">
             <input type="text" placeholder="Produto ou descrição…"
               value={search} onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && applySearch()}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg w-48" />
+              className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg" />
             <button onClick={applySearch}
               className="px-3 py-2 rounded-lg text-white" style={{ backgroundColor: '#D92214' }}>
               <Search size={15} />
@@ -108,9 +97,15 @@ export default function ForecastPage() {
               Limpar
             </button>
           )}
+          <button onClick={() => exportForecast(filters)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
+            style={{ backgroundColor: '#D92214' }}>
+            <Download size={14} /> Exportar XLSX
+          </button>
+
         </div>
         {/* Legend */}
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-center gap-4 mt-0 pt-2 border-t border-gray-100">
           <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Atingimento:</span>
           {[
             { bg: 'bg-green-100',  label: '≥100%' },
@@ -323,7 +318,7 @@ export default function ForecastPage() {
                 <XAxis dataKey="linha" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `${(v/1e3).toFixed(0)}k`} />
                 <Tooltip formatter={(v) => formatNumber(v as number, 0) + ' un'} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                <Legend verticalAlign="top" align="center" iconSize={10} height={36} wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="forecast" name="Forecast" fill="#32373c" radius={[4,4,0,0]} />
                 <Bar dataKey="real"     name="Realizado" fill="#2563eb" radius={[4,4,0,0]} />
               </BarChart>

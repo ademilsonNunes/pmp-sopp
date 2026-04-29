@@ -240,29 +240,58 @@ export default function ProducaoPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">Produção — Produto Acabado</h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700">PA</span>
-            {filialMode && (
-              <span
-                className="px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: FILIAIS_PROD.find(f => f.filial === filialMode)?.color }}
-              >
-                {FILIAIS_PROD.find(f => f.filial === filialMode)?.label}
-              </span>
-            )}
           </div>
-          <p className="text-sm text-gray-500">
-            {data ? `${data.total.toLocaleString('pt-BR')} movimentos` : '—'}
-            {!hasDateFilter && ' · mês corrente'}
-          </p>
         </div>
-        <button
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+
+          <input type="date"
+            value={filters.date_from || ''}
+            onChange={e => { setFilter('date_from', e.target.value); setPage(1) }}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+
+          <input type="date"
+            value={filters.date_to || ''}
+            onChange={e => { setFilter('date_to', e.target.value); setPage(1) }}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
+
+          <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg"
+            style={{ backgroundColor: '#D9221418', color: '#D92214' }}>
+            <Package size={13} /> Tipo: PA
+          </div>
+          <div className="flex flex-1 min-w-0 gap-2">
+            <input
+              type="text"
+              placeholder="Produto ou código…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && applySearch()}
+              className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg"
+            />
+            <button onClick={applySearch}
+              className="px-3 py-2 rounded-lg text-white"
+              style={{ backgroundColor: '#D92214' }}>
+              <Search size={15} />
+            </button>
+          </div>
+
+          {hasFilters && (
+            <button onClick={clearAll}
+              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+              Limpar
+            </button>
+          )}
+          <button
           onClick={() => exportProducao(filters)}
           className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
           style={{ backgroundColor: '#D92214' }}
         >
           <Download size={14} /> Exportar XLSX
         </button>
+        </div>
       </div>
 
       {/* Cards de filial */}
@@ -320,48 +349,6 @@ export default function ProducaoPage() {
         />
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Produto ou código…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applySearch()}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg w-48"
-            />
-            <button onClick={applySearch}
-              className="px-3 py-2 rounded-lg text-white"
-              style={{ backgroundColor: '#D92214' }}>
-              <Search size={15} />
-            </button>
-          </div>
-
-          <input type="date"
-            value={filters.date_from || ''}
-            onChange={e => { setFilter('date_from', e.target.value); setPage(1) }}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
-
-          <input type="date"
-            value={filters.date_to || ''}
-            onChange={e => { setFilter('date_to', e.target.value); setPage(1) }}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg" />
-
-          <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg"
-            style={{ backgroundColor: '#D9221418', color: '#D92214' }}>
-            <Package size={13} /> Tipo: PA
-          </div>
-
-          {hasFilters && (
-            <button onClick={clearAll}
-              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-              Limpar
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Charts */}
       {charts && (

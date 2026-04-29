@@ -264,28 +264,82 @@ export default function EstoquePage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Estoque de Produtos Acabados</h1>
-          <p className="text-sm text-gray-500">
-            Armazém 50 — Empresa 010 SOBEL
-            {filialMode && (
-              <span
-                className="ml-2 font-semibold"
-                style={{ color: FILIAIS.find(f => f.filial === filialMode)?.color }}
+        {/* Filtros */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <div className="flex flex-wrap gap-3 items-center">
+
+            {/* Busca */}
+            <div className="flex flex-1 min-w-0 gap-2">
+              <input
+                type="text"
+                placeholder="SKU ou descrição…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && applySearch()}
+                className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 rounded-lg w-44"
+              />
+              <button
+                onClick={applySearch}
+                className="px-3 py-2 rounded-lg text-white"
+                style={{ backgroundColor: '#D92214' }}
               >
-                · {FILIAIS.find(f => f.filial === filialMode)?.label}
-              </span>
-            )}
-          </p>
+                <Search size={15} />
+              </button>
+            </div>
+
+            {/* Linha */}
+            <select
+              value={filters.linha || ''}
+              onChange={e => setFilter('linha', e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+            >
+              <option value="">Todas as linhas</option>
+              {LINHAS.map(l => <option key={l}>{l}</option>)}
+            </select>
+
+            {/* Status */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+              {(['todos', 'ativos', 'zerados'] as StatusFilter[]).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-2 transition-colors capitalize ${
+                    statusFilter === s
+                      ? 'text-white'
+                      : 'bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                  style={statusFilter === s ? {
+                    backgroundColor:
+                      s === 'zerados' ? '#dc2626' :
+                      s === 'ativos'  ? '#16a34a' : '#374151',
+                  } : {}}
+                >
+                  {s === 'todos' ? 'Todos' : s === 'ativos' ? 'Com estoque' : 'Zerados'}
+                </button>
+              ))}
+            </div>
+                {hasFilters && (
+                  <button
+                    onClick={clearAll}
+                    className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                  >
+                    Limpar
+                  </button>
+                )}
+
+                <span className="ml-auto text-sm font-semibold text-black">
+                  {filteredItems.length} posições
+                </span>
+                <button
+                  onClick={() => exportEstoque(filters)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
+                  style={{ backgroundColor: '#D92214' }}
+                  >
+                  <Download size={14} /> Exportar XLSX
+                </button>
+              </div>
         </div>
-        <button
-          onClick={() => exportEstoque(filters)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm text-white rounded-lg"
-          style={{ backgroundColor: '#D92214' }}
-        >
-          <Download size={14} /> Exportar XLSX
-        </button>
       </div>
 
       {/* Cards de filial */}
@@ -349,75 +403,6 @@ export default function EstoquePage() {
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap gap-3 items-center">
-
-          {/* Busca */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="SKU ou descrição…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applySearch()}
-              className="px-3 py-2 text-sm border border-gray-200 rounded-lg w-44"
-            />
-            <button
-              onClick={applySearch}
-              className="px-3 py-2 rounded-lg text-white"
-              style={{ backgroundColor: '#D92214' }}
-            >
-              <Search size={15} />
-            </button>
-          </div>
-
-          {/* Linha */}
-          <select
-            value={filters.linha || ''}
-            onChange={e => setFilter('linha', e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
-          >
-            <option value="">Todas as linhas</option>
-            {LINHAS.map(l => <option key={l}>{l}</option>)}
-          </select>
-
-          {/* Status */}
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            {(['todos', 'ativos', 'zerados'] as StatusFilter[]).map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-2 transition-colors capitalize ${
-                  statusFilter === s
-                    ? 'text-white'
-                    : 'bg-white text-gray-500 hover:bg-gray-50'
-                }`}
-                style={statusFilter === s ? {
-                  backgroundColor:
-                    s === 'zerados' ? '#dc2626' :
-                    s === 'ativos'  ? '#16a34a' : '#374151',
-                } : {}}
-              >
-                {s === 'todos' ? 'Todos' : s === 'ativos' ? 'Com estoque' : 'Zerados'}
-              </button>
-            ))}
-          </div>
-
-          {hasFilters && (
-            <button
-              onClick={clearAll}
-              className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
-            >
-              Limpar
-            </button>
-          )}
-
-          <span className="ml-auto text-xs text-gray-400">
-            {filteredItems.length} posições
-          </span>
-        </div>
-      </div>
 
       {/* Gráfico por linha */}
       {data && data.por_linha.length > 0 && (
