@@ -167,7 +167,7 @@ export default function FaturamentoPage() {
                 margin={{ top: 0, right: 60, left: 4, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={v => `${(v/1e6).toFixed(1)}M`} />
-                <YAxis dataKey="linha" type="category" tick={{ fontSize: 9 }} width={90} />
+                <YAxis dataKey="linha" type="category" tick={{ fontSize: 9 }} width={90} interval={0} />
                 <Tooltip formatter={(v) => BRL(v as number)} />
                 <Bar dataKey="valor" name="Faturamento" fill="#D92214" radius={[0,4,4,0]} />
               </BarChart>

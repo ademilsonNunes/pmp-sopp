@@ -26,6 +26,7 @@ import {
   type DevBonifParams,
   type PmpRealParams,
   type EmbarqueParams,
+  type DashboardParams,
 } from '../lib/sopp'
 
 const STALE = 5 * 60_000 // 5 min
@@ -38,10 +39,10 @@ export function useSoppFilters() {
   })
 }
 
-export function useDashboard() {
+export function useDashboard(params?: DashboardParams) {
   return useQuery({
-    queryKey: ['sopp', 'dashboard'],
-    queryFn: fetchDashboard,
+    queryKey: ['sopp', 'dashboard', params],
+    queryFn: () => fetchDashboard(params),
     staleTime: STALE,
   })
 }

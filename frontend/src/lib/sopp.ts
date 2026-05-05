@@ -27,8 +27,14 @@ export const fetchSoppFilters = (): Promise<SoppFilters> =>
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export const fetchDashboard = (): Promise<SoppDashboard> =>
-  api.get('/sopp/dashboard').then(r => r.data)
+export interface DashboardParams {
+  date_from?: string
+  date_to?: string
+  empresa?: string
+}
+
+export const fetchDashboard = (params?: DashboardParams): Promise<SoppDashboard> =>
+  api.get('/sopp/dashboard', { params }).then(r => r.data)
 
 // ─── Pedidos ──────────────────────────────────────────────────────────────────
 

@@ -194,71 +194,217 @@ def _xlsx_response(data: bytes, filename: str) -> StreamingResponse:
 
 @router.get("/dashboard")
 def get_dashboard(
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    empresa: str | None = Query(None),
     conn=Depends(get_bi_conn),
     current_user: models.User = Depends(get_current_user),
 ):
+
+    def empresa_filiais(value: str | None):
+        if value == "jacana":
+            return ["01", "010"]
+        if value == "atibaia":
+            return ["06", "060"]
+        return []
+
+    def build_where_data(data_col: str, empresa_col: str | None = None):
+        conds = []
+        params = []
+
+        if date_from:
+            conds.append(f"{data_col} >= %s")
+            params.append(date_from)
+
+        if date_to:
+            conds.append(f"{data_col} <= %s")
+            params.append(date_to)
+
+        filiais = empresa_filiais(empresa)
+
+        if empresa_col and filiais:
+            placeholders = ",".join(["%s"] * len(filiais))
+            conds.append(f"LTRIM(RTRIM({empresa_col})) IN ({placeholders})")
+            params.extend(filiais)
+
+        where = "WHERE " + " AND ".join(conds) if conds else ""
+        return where, params
+    
+
+    fat_where_base, fat_params_base = build_where_data("EMISSAO", "FILIAL")
+    prod_where, prod_params = build_where_data("EMISSAO", "D3_FILIAL")
+    
+
+    def build_where_empresa_faturamento():
+        conds = [
+            "EMISSAO >= DATEADD(month,-5,DATEADD(month,DATEDIFF(month,0,GETDATE()),0))"
+        ]
+        params = []
+
+        if empresa == "jacana":
+            conds.append("LTRIM(RTRIM(FILIAL)) = %s")
+            params.append("01")
+        elif empresa == "atibaia":
+            conds.append("LTRIM(RTRIM(FILIAL)) = %s")
+            params.append("06")
+
+        where = "WHERE " + " AND ".join(conds)
+        return where, params
+    
+
+    fat_mensal_where, fat_mensal_params = build_where_empresa_faturamento()
+
+    def build_where_carteira():
+        conds = []
+        params = []
+
+        # Para carteira, usamos DT_ENTREGA para respeitar o período filtrado.
+        if date_from:
+            conds.append("DT_ENTREGA >= %s")
+            params.append(date_from)
+
+        if date_to:
+            conds.append("DT_ENTREGA <= %s")
+            params.append(date_to)
+
+        where = "WHERE " + " AND ".join(conds) if conds else ""
+        return where, params
+
+
+    def build_where_estoque_dashboard():
+        conds = ["TB_EMPRESA = '010'", "QTDE_DISP > 0"]
+        params = []
+
+        # Estoque não tem filtro de data aqui, pois é posição atual.
+        # Aplicamos apenas o filtro de empresa/filial.
+        if empresa == "jacana":
+            conds.append("LTRIM(RTRIM(COD_FILIAL)) = %s")
+            params.append("01")
+        elif empresa == "atibaia":
+            conds.append("LTRIM(RTRIM(COD_FILIAL)) = %s")
+            params.append("06")
+
+        where = "WHERE " + " AND ".join(conds)
+        return where, params
+
+
+    carteira_where, carteira_params = build_where_carteira()
+    estoque_where, estoque_params = build_where_estoque_dashboard()
+    
+
+    def add_tp_condition(where: str, tp: str):
+        if where:
+            return f"{where} AND TP = '{tp}'"
+        return f"WHERE TP = '{tp}'"
+
+
+    cur = conn.cursor()
+
+    _exec(cur, f"""
+        SELECT
+            ISNULL(SUM(CASE 
+                WHEN UPPER(LTRIM(RTRIM(TIPO_FRETE))) = 'CIF' 
+                THEN VL_LIQUIDO 
+                ELSE 0 
+            END), 0) AS fat_cif,
+
+            ISNULL(SUM(CASE 
+                WHEN UPPER(LTRIM(RTRIM(TIPO_FRETE))) = 'FOB' 
+                THEN VL_LIQUIDO 
+                ELSE 0 
+            END), 0) AS fat_fob
+        FROM FATURAMENTO
+        {add_tp_condition(fat_where_base, 'VS')}
+    """, fat_params_base)
+
+    row_cif_fob = cur.fetchone()
+    fat_cif = float(row_cif_fob[0] or 0)
+    fat_fob = float(row_cif_fob[1] or 0)
+
+    def add_tp_condition(where: str, tp: str):
+        if where:
+            return f"{where} AND TP = '{tp}'"
+        return f"WHERE TP = '{tp}'"
+
     kpis = {
-        "qtde_carteira":    _scalar(conn, "SELECT ISNULL(SUM(QTDE),0) FROM PV_ABERTOS"),
-        "valor_carteira":   _scalar(conn, "SELECT ISNULL(SUM(VL_BRUTO),0) FROM PV_ABERTOS"),
-        "estoque_disponivel": _scalar(
-            conn,
-            "SELECT ISNULL(SUM(QTDE_DISP),0) FROM ESTOQUES_PA WHERE TB_EMPRESA='010'"
-        ),
-        "fat_mes_atual": _scalar(conn, """
-            SELECT ISNULL(SUM(VL_LIQUIDO),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'VS'
-        """),
-        "qtde_fat_mes": _scalar(conn, """
-            SELECT ISNULL(SUM(QUANTIDADE),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'VS'
-        """),
-        "fat_devol_mes": _scalar(conn, """
-            SELECT ISNULL(SUM(ABS(VL_LIQUIDO)),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'DS'
-        """),
-        "qtde_devol_mes": _scalar(conn, """
-            SELECT ISNULL(SUM(ABS(QUANTIDADE)),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'DS'
-        """),
-        "fat_bonif_mes": _scalar(conn, """
-            SELECT ISNULL(SUM(VL_LIQUIDO),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'FS'
-        """),
-        "qtde_bonif_mes": _scalar(conn, """
-            SELECT ISNULL(SUM(QUANTIDADE),0) FROM FATURAMENTO
-            WHERE EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-              AND TP = 'FS'
-        """),
-        "prod_mes_atual": _scalar(conn, """
-            SELECT ISNULL(SUM(QTDE),0) FROM MOV_PRODUCAO
-            WHERE TIPO='PA'
-              AND EMISSAO >= DATEADD(month,DATEDIFF(month,0,GETDATE()),0)
-        """),
+        "qtde_carteira": _scalar(conn, f"""
+            SELECT ISNULL(SUM(QTDE),0)
+            FROM PV_ABERTOS
+            {carteira_where}
+        """, carteira_params),
+
+        "valor_carteira": _scalar(conn, f"""
+            SELECT ISNULL(SUM(VL_BRUTO),0)
+            FROM PV_ABERTOS
+            {carteira_where}
+        """, carteira_params),
+
+        "estoque_disponivel": _scalar(conn, f"""
+            SELECT ISNULL(SUM(QTDE_DISP),0)
+            FROM ESTOQUES_PA
+            {estoque_where}
+        """, estoque_params),
+        
+        "fat_mes_atual": _scalar(conn, f"""
+            SELECT ISNULL(SUM(VL_LIQUIDO),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'VS')}
+        """, fat_params_base),
+        "qtde_fat_mes": _scalar(conn, f"""
+            SELECT ISNULL(SUM(QUANTIDADE),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'VS')}
+        """, fat_params_base),
+        "fat_devol_mes": _scalar(conn, f"""
+            SELECT ISNULL(SUM(ABS(VL_LIQUIDO)),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'DS')}
+        """, fat_params_base),
+        "qtde_devol_mes": _scalar(conn, f"""
+            SELECT ISNULL(SUM(ABS(QUANTIDADE)),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'DS')}
+        """, fat_params_base),
+        "fat_bonif_mes": _scalar(conn, f"""
+            SELECT ISNULL(SUM(VL_LIQUIDO),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'FS')}
+        """, fat_params_base),
+        "qtde_bonif_mes": _scalar(conn, f"""
+            SELECT ISNULL(SUM(QUANTIDADE),0)
+            FROM FATURAMENTO
+            {add_tp_condition(fat_where_base, 'FS')}
+        """, fat_params_base),
+        "prod_mes_atual": _scalar(conn, f"""
+            SELECT ISNULL(SUM(QTDE),0)
+            FROM MOV_PRODUCAO
+            {prod_where + (' AND' if prod_where else 'WHERE')} TIPO = 'PA'
+        """, prod_params),
+        "fat_cif": fat_cif,
+        "fat_fob": fat_fob,
     }
 
     cur = conn.cursor()
 
-    # Faturamento mensal: líquido (TP=VS) + devoluções (TP=DS, ABS)
-    _exec(cur, """
-        SELECT FORMAT(EMISSAO,'yyyy-MM') as mes,
-               ISNULL(SUM(CASE WHEN TP = 'VS' THEN VL_LIQUIDO ELSE 0 END), 0) as liquido,
-               ISNULL(SUM(CASE WHEN TP = 'DS' THEN ABS(VL_LIQUIDO) ELSE 0 END), 0) as devol
+    # Faturamento mensal: últimos 5 meses, respeitando somente o filtro de empresa
+    _exec(cur, f"""
+        SELECT
+            FORMAT(EMISSAO,'yyyy-MM') as mes,
+            ISNULL(SUM(CASE WHEN TP = 'VS' THEN VL_LIQUIDO ELSE 0 END), 0) as liquido,
+            ISNULL(SUM(CASE WHEN TP = 'DS' THEN ABS(VL_LIQUIDO) ELSE 0 END), 0) as devol
         FROM FATURAMENTO
-        WHERE EMISSAO >= DATEADD(month,-5,DATEADD(month,DATEDIFF(month,0,GETDATE()),0))
+        {fat_mensal_where}
         GROUP BY FORMAT(EMISSAO,'yyyy-MM')
         ORDER BY mes
-    """)
+    """, fat_mensal_params)
+
+
     fat_mensal = [
         {"mes": r[0], "liquido": float(r[1] or 0), "devol": float(r[2] or 0)}
         for r in cur.fetchall()
     ]
 
-    # Carteira por linha S&OP (usando DESC_PRD → _LINHA_CASE)
+    # Carteira por linha S&OP: respeita o período filtrado usando DT_ENTREGA
     _exec(cur, f"""
         SELECT linha,
                ISNULL(SUM(valor),0) as valor,
@@ -268,45 +414,233 @@ def get_dashboard(
                    ISNULL(VL_BRUTO,0) as valor,
                    ISNULL(QTDE,0)     as qtde
             FROM PV_ABERTOS
+            {carteira_where}
         ) t
         GROUP BY linha
         ORDER BY valor DESC
-    """)
+    """, carteira_params)
+
     carteira_por_linha = [
         {"linha": r[0], "valor": float(r[1] or 0), "qtde": float(r[2] or 0)}
         for r in cur.fetchall()
     ]
 
-    _exec(cur, """
-        SELECT FORMAT(EMISSAO,'yyyy-MM-dd') as data, ISNULL(SUM(QTDE),0) as qtde
+    # Produção PA: respeita período e empresa filtrados
+    _exec(cur, f"""
+        SELECT
+            FORMAT(EMISSAO,'yyyy-MM-dd') as data,
+            ISNULL(SUM(QTDE),0) as qtde
         FROM MOV_PRODUCAO
-        WHERE TIPO='PA' AND EMISSAO >= DATEADD(day,-30,GETDATE())
+        {prod_where + (' AND' if prod_where else 'WHERE')} TIPO = 'PA'
         GROUP BY FORMAT(EMISSAO,'yyyy-MM-dd')
         ORDER BY data
-    """)
-    producao_diaria = [{"data": r[0], "qtde": float(r[1] or 0)} for r in cur.fetchall()]
+    """, prod_params)
 
-    _exec(cur, """
+    producao_diaria = [
+        {"data": r[0], "qtde": float(r[1] or 0)}
+        for r in cur.fetchall()
+    ]
+
+    # Devoluções por dia — consolidado do período filtrado
+    # Faturamento bruto em caixas = faturamento líquido + bonificação + devolução
+    # Na base atual isso equivale ao TP='VS'.
+    # O faturamento líquido em caixas é calculado abatendo devolução e bonificação.
+    _exec(cur, f"""
+        SELECT
+            FORMAT(EMISSAO, 'yyyy-MM-dd') AS data,
+            ISNULL(SUM(CASE WHEN TP IN ('VS', 'FS') THEN QUANTIDADE ELSE 0 END), 0) AS faturamento_bruto_caixas,
+            ISNULL(SUM(CASE WHEN TP = 'DS' THEN ABS(QUANTIDADE) ELSE 0 END), 0) AS devolucao_caixas,
+            ISNULL(SUM(CASE WHEN TP = 'FS' THEN QUANTIDADE ELSE 0 END), 0) AS bonificacao_caixas
+        FROM FATURAMENTO
+        {fat_where_base}
+        GROUP BY FORMAT(EMISSAO, 'yyyy-MM-dd')
+        HAVING
+            ISNULL(SUM(CASE WHEN TP = 'VS' THEN QUANTIDADE ELSE 0 END), 0) <> 0
+            OR ISNULL(SUM(CASE WHEN TP = 'DS' THEN ABS(QUANTIDADE) ELSE 0 END), 0) <> 0
+        ORDER BY data
+    """, fat_params_base)
+
+    devolucoes_por_dia = []
+
+    for r in cur.fetchall():
+        bruto = float(r[1] or 0)
+        devolucao = float(r[2] or 0)
+        bonificacao = float(r[3] or 0)
+
+        liquido = bruto - devolucao - bonificacao
+        pct_dev = (devolucao / bruto * 100) if bruto > 0 else 0
+
+        devolucoes_por_dia.append({
+            "data": r[0],
+            "faturamento_bruto_caixas": bruto,
+            "devolucao_caixas": devolucao,
+            "pct_dev": pct_dev,
+            "faturamento_liquido_caixas": liquido,
+        })
+
+
+    # Faturamento por família - percentual sobre faturamento bruto
+    fat_familia_conds = []
+    fat_familia_params = []
+
+    if date_from:
+        fat_familia_conds.append("EMISSAO >= %s")
+        fat_familia_params.append(date_from)
+
+    if date_to:
+        fat_familia_conds.append("EMISSAO <= %s")
+        fat_familia_params.append(date_to)
+
+    # Faturamento bruto: vendas normais
+    fat_familia_conds.append("TP = 'VS'")
+
+    # Se o dashboard já usa filtro de empresa em outros KPIs, use o mesmo campo aqui.
+    # Exemplo:
+    def build_where_empresa_faturamento():
+        conds = [
+            "EMISSAO >= DATEADD(month,-5,DATEADD(month,DATEDIFF(month,0,GETDATE()),0))"
+        ]
+        params = []
+
+        filiais = empresa_filiais(empresa)
+
+        if filiais:
+            placeholders = ",".join(["%s"] * len(filiais))
+            conds.append(f"LTRIM(RTRIM(FILIAL)) IN ({placeholders})")
+            params.extend(filiais)
+
+        where = "WHERE " + " AND ".join(conds)
+        return where, params
+
+    fat_familia_where = "WHERE " + " AND ".join(fat_familia_conds)
+
+    _exec(cur, f"""
+        SELECT
+            linha,
+            ISNULL(SUM(valor), 0) AS valor
+        FROM (
+            SELECT
+                {_LINHA_CASE_DESCRICAO} AS linha,
+                ISNULL(VL_BRUTO, 0) AS valor
+            FROM FATURAMENTO
+            {fat_familia_where}
+        ) t
+        GROUP BY linha
+        HAVING ISNULL(SUM(valor), 0) > 0
+        ORDER BY valor DESC
+    """, fat_familia_params)
+
+    faturamento_por_familia_raw = [
+        {
+            "familia": r[0],
+            "valor": float(r[1] or 0),
+        }
+        for r in cur.fetchall()
+    ]
+
+    total_faturamento_bruto_familia = sum(
+        item["valor"] for item in faturamento_por_familia_raw
+    )
+
+    faturamento_por_familia = [
+        {
+            **item,
+            "pct": (
+                item["valor"] / total_faturamento_bruto_familia * 100
+                if total_faturamento_bruto_familia > 0
+                else 0
+            ),
+        }
+        for item in faturamento_por_familia_raw
+    ]
+
+
+    # Top 10 produtos em estoque: respeita filtro de empresa/filial
+    _exec(cur, f"""
         SELECT TOP 10 COD_PRD, DESC_PRD,
                ISNULL(SUM(QTDE_DISP),0) as disp,
                ISNULL(SUM(QTDE_RESERVA),0) as reserva
         FROM ESTOQUES_PA
-        WHERE TB_EMPRESA='010' AND QTDE_DISP > 0
+        {estoque_where}
         GROUP BY COD_PRD, DESC_PRD
         ORDER BY disp DESC
-    """)
+    """, estoque_params)
+
     estoque_top10 = [
         {"cod_prd": r[0], "desc_prd": r[1],
          "disp": float(r[2] or 0), "reserva": float(r[3] or 0)}
         for r in cur.fetchall()
     ]
 
+    # Top 10 clientes por participação no faturamento bruto
+    top_clientes_conds = []
+    top_clientes_params = []
+
+    if date_from:
+        top_clientes_conds.append("EMISSAO >= %s")
+        top_clientes_params.append(date_from)
+
+    if date_to:
+        top_clientes_conds.append("EMISSAO <= %s")
+        top_clientes_params.append(date_to)
+
+    top_clientes_conds.append("TP = 'VS'")
+
+    if empresa == "jacana":
+        top_clientes_conds.append("LTRIM(RTRIM(FILIAL)) IN (%s, %s)")
+        top_clientes_params.extend(["01", "010"])
+    elif empresa == "atibaia":
+        top_clientes_conds.append("LTRIM(RTRIM(FILIAL)) IN (%s, %s)")
+        top_clientes_params.extend(["06", "060"])
+
+    top_clientes_where = "WHERE " + " AND ".join(top_clientes_conds)
+
+    _exec(cur, f"""
+        SELECT TOP 10
+            ISNULL(CLIENTE, '(sem cliente)') AS CLIENTE,
+            ISNULL(SUM(VL_BRUTO), 0) AS valor,
+            ISNULL(SUM(QUANTIDADE), 0) AS caixas
+        FROM FATURAMENTO
+        {top_clientes_where}
+        GROUP BY CLIENTE
+        HAVING ISNULL(SUM(VL_BRUTO), 0) > 0
+        ORDER BY valor DESC
+    """, top_clientes_params)
+
+    top_clientes_raw = [
+        {
+            "cliente": r[0],
+            "valor": float(r[1] or 0),
+            "caixas": float(r[2] or 0),
+        }
+        for r in cur.fetchall()
+    ]
+
+    total_faturamento_bruto_clientes = sum(
+        item["valor"] for item in top_clientes_raw
+    )
+
+    top_clientes_faturamento = [
+        {
+            **item,
+            "pct": (
+                item["valor"] / total_faturamento_bruto_clientes * 100
+                if total_faturamento_bruto_clientes > 0
+                else 0
+            ),
+        }
+        for item in top_clientes_raw
+    ]
+
     return {
         "kpis": kpis,
         "fat_mensal": fat_mensal,
         "carteira_por_linha": carteira_por_linha,
+        "faturamento_por_familia": faturamento_por_familia,
+        "top_clientes_faturamento": top_clientes_faturamento,
         "producao_diaria": producao_diaria,
         "estoque_top10": estoque_top10,
+        "devolucoes_por_dia": devolucoes_por_dia,
     }
 
 
