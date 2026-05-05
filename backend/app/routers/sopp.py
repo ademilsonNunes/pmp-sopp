@@ -480,40 +480,10 @@ def get_dashboard(
 
 
     # Faturamento por família - percentual sobre faturamento bruto
-    fat_familia_conds = []
-    fat_familia_params = []
-
-    if date_from:
-        fat_familia_conds.append("EMISSAO >= %s")
-        fat_familia_params.append(date_from)
-
-    if date_to:
-        fat_familia_conds.append("EMISSAO <= %s")
-        fat_familia_params.append(date_to)
-
-    # Faturamento bruto: vendas normais
-    fat_familia_conds.append("TP = 'VS'")
-
-    # Se o dashboard já usa filtro de empresa em outros KPIs, use o mesmo campo aqui.
-    # Exemplo:
-    def build_where_empresa_faturamento():
-        conds = [
-            "EMISSAO >= DATEADD(month,-5,DATEADD(month,DATEDIFF(month,0,GETDATE()),0))"
-        ]
-        params = []
-
-        filiais = empresa_filiais(empresa)
-
-        if filiais:
-            placeholders = ",".join(["%s"] * len(filiais))
-            conds.append(f"LTRIM(RTRIM(FILIAL)) IN ({placeholders})")
-            params.extend(filiais)
-
-        where = "WHERE " + " AND ".join(conds)
-        return where, params
-
-    fat_familia_where = "WHERE " + " AND ".join(fat_familia_conds)
-
+    # Usa o mesmo filtro oficial do dashboard: período + empresa.
+    # Depois adiciona TP='VS' para considerar somente vendas normais.
+    fat_familia_where = add_tp_condition(fat_where_base, 'VS')
+    
     _exec(cur, f"""
         SELECT
             linha,
@@ -528,7 +498,7 @@ def get_dashboard(
         GROUP BY linha
         HAVING ISNULL(SUM(valor), 0) > 0
         ORDER BY valor DESC
-    """, fat_familia_params)
+    """, fat_params_base)
 
     faturamento_por_familia_raw = [
         {
