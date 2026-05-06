@@ -18,6 +18,7 @@ import UsersPage from './pages/UsersPage'
 import FirstLoginChangePasswordPage from './pages/FirstLoginChangePasswordPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import FeriadosPage from './pages/FeriadosPage'
 
 
 const queryClient = new QueryClient({
@@ -126,6 +127,15 @@ export default function App() {
               <AdminRoute>
                 <UsersPage />
               </AdminRoute>
+            }
+          />
+        
+          <Route
+            path="/feriados"
+            element={
+              <ProtectedRoute>
+                <FeriadosPage />
+              </ProtectedRoute>
             }
           />
 

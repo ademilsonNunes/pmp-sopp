@@ -167,8 +167,11 @@ export interface SoppDashboard {
   kpis: SoppKpis
   fat_mensal: { mes: string; liquido: number; devol: number }[]
   carteira_por_linha: { linha: string; valor: number; qtde: number }[]
+  faturamento_por_familia: { familia: string; valor: number; pct: number }[]
+  top_clientes_faturamento: { cliente: string; valor: number; caixas: number; pct: number }[]
   producao_diaria: { data: string; qtde: number }[]
   estoque_top10: { cod_prd: string; desc_prd: string; disp: number; reserva: number }[]
+  devolucoes_por_dia: { data: string; faturamento_bruto_caixas: number; devolucao_caixas: number; pct_dev: number; faturamento_liquido_caixas: number }[]
 }
 
 export interface DevolucaoStats {
@@ -470,4 +473,31 @@ export interface PmpRealResponse {
   mesref: string
   kpis: { programado: number; realizado: number; atingimento: number }
   items: PmpRealItem[]
+}
+
+// ─── feriado ────────────────────────────────────────────────────────
+
+export interface Feriado {
+  id: number
+  data_feriado: string
+  descricao: string
+  tipo: string
+  is_active: boolean
+  created_at: string
+  created_by?: string | null
+  updated_at?: string | null
+  updated_by?: string | null
+}
+
+export interface CreateFeriadoPayload {
+  data_feriado: string
+  descricao: string
+  tipo: string
+}
+
+export interface UpdateFeriadoPayload {
+  data_feriado?: string
+  descricao?: string
+  tipo?: string
+  is_active?: boolean
 }

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, date
 from typing import Generic, TypeVar, Any, Literal
 from pydantic import BaseModel, Field
 
@@ -233,3 +233,30 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page: int
     page_size: int
     total_pages: int
+
+class FeriadoBase(BaseModel):
+    data_feriado: date
+    descricao: str = Field(..., min_length=2, max_length=120)
+    tipo: str = Field("NACIONAL", max_length=20)
+
+
+class FeriadoCreate(FeriadoBase):
+    pass
+
+
+class FeriadoUpdate(BaseModel):
+    data_feriado: date | None = None
+    descricao: str | None = Field(None, min_length=2, max_length=120)
+    tipo: str | None = Field(None, max_length=20)
+    is_active: bool | None = None
+
+
+class FeriadoOut(FeriadoBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    created_by: str | None = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
+
+    model_config = {"from_attributes": True}

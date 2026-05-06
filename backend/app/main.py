@@ -8,7 +8,7 @@ from app import models
 from app.auth import get_password_hash
 from app.config import settings
 from app.database import SessionLocal, create_tables
-from app.routers import auth, imports, pmp, sopp
+from app.routers import auth, imports, pmp, sopp, feriados
 
 
 @asynccontextmanager
@@ -58,6 +58,7 @@ app.include_router(auth.router)
 app.include_router(pmp.router)
 app.include_router(imports.router)
 app.include_router(sopp.router)
+app.include_router(feriados.router)
 
 
 @app.get("/health")

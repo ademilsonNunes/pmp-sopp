@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import (
-    BigInteger, Integer, String, Float, Boolean, DateTime, ForeignKey,
+    BigInteger, Integer, String, Float, Boolean, Date, DateTime, ForeignKey,
     Text, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -173,4 +173,18 @@ class PasswordHistory(Base):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
+class Feriado(Base):
+    __tablename__ = "ZPMP_FERIADOS"
+
+    id: Mapped[int] = mapped_column("ID", Integer, primary_key=True, autoincrement=True)
+    data_feriado: Mapped[date] = mapped_column("DATA_FERIADO", Date, nullable=False, unique=True)
+    descricao: Mapped[str] = mapped_column("DESCRICAO", String(120), nullable=False)
+    tipo: Mapped[str] = mapped_column("TIPO", String(20), nullable=False, default="NACIONAL")
+    is_active: Mapped[bool] = mapped_column("IS_ACTIVE", Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column("CREATED_AT", DateTime, server_default=func.now())
+    created_by: Mapped[str | None] = mapped_column("CREATED_BY", String(50), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column("UPDATED_AT", DateTime, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column("UPDATED_BY", String(50), nullable=True)
 

@@ -418,7 +418,7 @@ export default function EstoquePage() {
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={v => N(+v)} />
-              <YAxis dataKey="linha" type="category" tick={{ fontSize: 9 }} width={100} />
+              <YAxis dataKey="linha" type="category" tick={{ fontSize: 9 }} width={100} interval={0} />
               <Tooltip formatter={v => N(v as number) + ' cx'} />
               <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="disp"    name="Disponível" fill="#16a34a" radius={[0, 4, 4, 0]} stackId="a" />
